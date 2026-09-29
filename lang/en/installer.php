@@ -8,8 +8,8 @@ declare(strict_types=1);
 return [
     'description' => 'Chooses the optional kit modules (accounts, uploads, /admin panel) and the demo, and applies: Composer, migrations, APP_KEY and pepper',
     'options' => [
-        'with' => 'Optional modules to install or keep, comma separated (accounts,uploads,admin)',
-        'without' => 'Optional modules to remove, comma separated',
+        'with' => 'Optional modules to install or keep, comma separated (accounts,uploads,admin); without the option, the TWS_KIT_WITH variable applies',
+        'without' => 'Optional modules to remove, comma separated; without the option, the TWS_KIT_WITHOUT variable applies',
         'no_demo' => 'Removes the kit demo (twstec/kit-demo)',
         'force' => 'Allows running in production',
         'graceful' => 'Does not fail when the database is unreachable (migrations are left for later)',
@@ -90,5 +90,34 @@ return [
         'next_fresh' => 'Development database with the demo fake data: php artisan migrate:fresh',
         'next_horizon' => 'Without /admin, /horizon stays closed outside the local environment (see app/Providers/HorizonServiceProvider.php).',
         'next_serve' => 'Start the application: composer dev (or docker compose up -d, see the README).',
+    ],
+
+    // php artisan tws:add — adding kit packages to an existing application.
+    'add' => [
+        'description' => 'Adds kit packages (authentication, accounts, uploads, /admin panel) to an existing Laravel application: Composer, configuration, .env and migrations',
+        'arguments' => [
+            'modules' => 'Modules to add, space separated (auth accounts uploads admin)',
+        ],
+        'intro' => 'TWS Laravel Starter Kit packages in this application:',
+        'available' => 'available',
+        'nothing_available' => 'Every kit package is already installed.',
+        'nothing_chosen' => 'No module chosen: nothing was changed.',
+        'select_label' => 'Which modules do you want to add?',
+        'select_hint' => 'Space toggles; Enter confirms. Uploads needs Accounts; authentication comes along with any module.',
+        'already_installed' => ':module is already installed.',
+        'will_install' => 'will be installed',
+        'comes_along' => 'comes along (required by the kit)',
+        'next' => 'What the application does now',
+        'errors' => [
+            'none_given' => 'Tell which modules to add (without a terminal there is no question): php artisan tws:add :modules',
+            'add_together' => 'Add both together: :command',
+            'user_model' => ':modules needs the application user model (:model) with the kit authentication: it does not implement Twstec\\Kit\\Auth\\Contracts\\AuthUser yet, and without it the application does not boot. Nothing was changed. The way: :firstadjust the model as in the twstec/kit-auth README (vendor/twstec/kit-auth/README.md) and run :command.',
+        ],
+        'next_steps' => [
+            'auth' => 'Authentication: the application user model implements Twstec\\Kit\\Auth\\Contracts\\AuthUser with the KitAuthenticatable trait (vendor/twstec/kit-auth/README.md).',
+            'accounts' => 'Accounts: nothing else in the model — the personal account is created with each person; the API keys pepper was generated in .env (vendor/twstec/kit-accounts/README.md).',
+            'uploads' => 'Uploads: for the profile photo, the HasAvatar trait in the model and the users.avatar_upload_id column in an application migration (vendor/twstec/kit-uploads/README.md).',
+            'admin' => '/admin panel: a Filament PanelProvider with AdminPlugin::make(), the model with FilamentUser and the AccessesAdminPanel trait, the users.is_admin column; then php artisan user:make-admin email@example.com (vendor/twstec/kit-admin/README.md).',
+        ],
     ],
 ];

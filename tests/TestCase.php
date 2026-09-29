@@ -82,11 +82,23 @@ abstract class TestCase extends Testbench
     /**
      * O projeto no estado que o teste quer.
      *
-     * @param  list<string>  $modules
+     * @param  list<string>  $modules  os opcionais instalados
+     * @param  list<string>  $required  os obrigatórios instalados
      */
-    protected function project(array $modules, bool $demo = false): void
+    protected function project(array $modules, bool $demo = false, array $required = ['foundation', 'auth'], bool $userModel = true): void
     {
-        $this->app->instance(Inventory::class, new FakeInventory($modules, $demo));
+        $this->app->instance(Inventory::class, new FakeInventory($modules, $demo, $required, $userModel));
+    }
+
+    /**
+     * Troca o composer.json do projeto (ex.: um aplicativo Laravel que só
+     * instalou o instalador, em require-dev).
+     *
+     * @param  array<string, mixed>  $composer
+     */
+    protected function composerJson(array $composer): void
+    {
+        file_put_contents($this->project.'/composer.json', json_encode($composer, JSON_PRETTY_PRINT));
     }
 
     protected function envFile(): string

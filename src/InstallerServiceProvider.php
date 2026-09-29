@@ -6,6 +6,7 @@ namespace Twstec\Kit\Installer;
 
 use Illuminate\Support\ServiceProvider;
 use Twstec\Kit\Foundation\Localization\PackageTranslations;
+use Twstec\Kit\Installer\Console\AddCommand;
 use Twstec\Kit\Installer\Console\InstallCommand;
 use Twstec\Kit\Installer\Contracts\Composer;
 use Twstec\Kit\Installer\Contracts\Inventory;
@@ -13,8 +14,10 @@ use Twstec\Kit\Installer\Support\InstalledModules;
 use Twstec\Kit\Installer\Support\ProcessComposer;
 
 /**
- * Provider do twstec/kit-installer (descoberta automática do Laravel): o
- * comando `tws:install` e as traduções dele (o aplicativo vence).
+ * Provider do twstec/kit-installer (descoberta automática do Laravel): os
+ * comandos `tws:install` (escolher os módulos de um starter) e `tws:add`
+ * (acrescentar pacotes do kit a um aplicativo que já existe) e as traduções
+ * deles (o aplicativo vence).
  *
  * POR QUE UM PACOTE À PARTE, e não o foundation: o instalador é FERRAMENTA DE
  * DESENVOLVIMENTO — roda o Composer e escreve no .env. Fica em `require-dev`
@@ -36,7 +39,7 @@ final class InstallerServiceProvider extends ServiceProvider
     public function boot(): void
     {
         if ($this->app->runningInConsole()) {
-            $this->commands([InstallCommand::class]);
+            $this->commands([InstallCommand::class, AddCommand::class]);
         }
     }
 }

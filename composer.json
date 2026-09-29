@@ -1,7 +1,7 @@
 {
     "$schema": "https://getcomposer.org/schema.json",
     "name": "twstec/kit-installer",
-    "description": "Instalador do TWS Laravel Starter Kit (php artisan tws:install): escolhe os módulos opcionais (contas, uploads, painel /admin) e a demonstração, aplica com o Composer, roda as migrations e gera a APP_KEY e o pepper das chaves de API quando faltam. Ferramenta de desenvolvimento — instale em require-dev.",
+    "description": "Instalador do TWS Laravel Starter Kit: php artisan tws:install escolhe os módulos opcionais (contas, uploads, painel /admin) e a demonstração de um starter; php artisan tws:add acrescenta pacotes do kit a um aplicativo Laravel que já existe. Aplica com o Composer, roda as migrations e gera a APP_KEY e o pepper das chaves de API quando faltam. Ferramenta de desenvolvimento — instale em require-dev.",
     "type": "library",
     "license": "MIT",
     "homepage": "https://github.com/kelvindk9w/tws-laravel-starter-kit",

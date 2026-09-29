@@ -6,14 +6,14 @@ namespace Twstec\Kit\Installer\Console;
 
 use Illuminate\Console\Command;
 use Illuminate\Encryption\Encrypter;
-use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Str;
 use Symfony\Component\Console\Input\InputOption;
 use Twstec\Kit\Foundation\Kit;
+use Twstec\Kit\Installer\Console\Concerns\InteractsWithProject;
 use Twstec\Kit\Installer\Contracts\Composer;
 use Twstec\Kit\Installer\Contracts\Inventory;
-use Twstec\Kit\Installer\Support\EnvironmentFile;
 use Twstec\Kit\Installer\Support\InstallPlan;
+use Twstec\Kit\Installer\Support\KitConstraint;
 
 use function Laravel\Prompts\confirm;
 use function Laravel\Prompts\multiselect;
@@ -33,6 +33,14 @@ use function Laravel\Prompts\multiselect;
  * nenhuma e sem terminal (ex.: o `composer create-project` num CI), nada muda
  * nos pacotes — só as tarefas de arrumação abaixo.
  *
+ * PELO AMBIENTE: TWS_KIT_WITH e TWS_KIT_WITHOUT valem como `--with` e
+ * `--without` quando a opção não foi dada (e também desligam as perguntas).
+ * É por onde a escolha chega ao `post-create-project-cmd` do starter — o
+ * Composer não repassa opções ao script: `TWS_KIT_WITHOUT=admin composer
+ * create-project twstec/starter-livewire app`, e o comando único
+ * (`composer create-project twstec/kit`), que passa assim o que o menu dele
+ * perguntou, sem perguntar de novo.
+ *
  * APLICA, nesta ordem: `demo:uninstall` (o banco solta o que a demo instalou —
  * gatilhos e tabelas — ANTES de o pacote sair) e a remoção da demo; o
  * `composer remove` dos módulos não escolhidos; o `composer require` dos
@@ -51,6 +59,18 @@ use function Laravel\Prompts\multiselect;
  */
 final class InstallCommand extends Command
 {
+    use InteractsWithProject;
+
+    /**
+     * Opção => a variável de ambiente que vale por ela quando a opção falta.
+     *
+     * @var array<string, string>
+     */
+    public const ENVIRONMENT = [
+        'with' => 'TWS_KIT_WITH',
+        'without' => 'TWS_KIT_WITHOUT',
+    ];
+
     protected $name = 'tws:install';
 
     /**
@@ -214,9 +234,27 @@ final class InstallCommand extends Command
     private function asks(): bool
     {
         return $this->input->isInteractive()
-            && $this->option('with') === null
-            && $this->option('without') === null
+            && $this->choiceFor('with') === null
+            && $this->choiceFor('without') === null
             && ! $this->option('no-demo');
+    }
+
+    /**
+     * O valor de `--with`/`--without` — ou, sem a opção, o da variável de
+     * ambiente dela (mesmo vazia: "nada a acrescentar"). Null quando não há
+     * nenhum dos dois.
+     */
+    private function choiceFor(string $option): ?string
+    {
+        $value = $this->option($option);
+
+        if ($value !== null) {
+            return (string) $value;
+        }
+
+        $environment = getenv(self::ENVIRONMENT[$option]);
+
+        return is_string($environment) ? $environment : null;
     }
 
     /**
@@ -227,7 +265,7 @@ final class InstallCommand extends Command
      */
     private function modulesFrom(string $option): ?array
     {
-        $raw = (string) ($this->option($option) ?? '');
+        $raw = (string) ($this->choiceFor($option) ?? '');
         $modules = array_values(array_unique(array_filter(array_map('trim', explode(',', strtolower($raw))))));
 
         foreach ($modules as $module) {
@@ -332,7 +370,7 @@ final class InstallCommand extends Command
         }
 
         if ($plan->toAdd() !== []) {
-            $constraint = $this->kitConstraint();
+            $constraint = KitConstraint::for($this->projectPath('composer.json'));
             $packages = array_map(static fn (string $module): string => Kit::package($module).':'.$constraint, $plan->toAdd());
             $this->components->info(__('installer.steps.composer_require', ['packages' => implode(', ', $packages)]));
 
@@ -355,19 +393,10 @@ final class InstallCommand extends Command
      */
     private function prepareEnvironment(InstallPlan $plan): void
     {
-        $env = new EnvironmentFile($this->laravel->environmentFilePath());
+        $env = $this->environmentFile();
 
-        if (! $env->exists()) {
-            $example = $this->projectPath('.env.example');
-
-            if (! is_file($example)) {
-                $this->components->warn(__('installer.failures.env_missing'));
-
-                return;
-            }
-
-            copy($example, $env->path());
-            $this->components->info(__('installer.steps.env_created'));
+        if ($env === null) {
+            return;
         }
 
         $appKeyExisted = $env->filled('APP_KEY');
@@ -481,63 +510,5 @@ final class InstallCommand extends Command
         }
 
         $this->newLine();
-    }
-
-    /**
-     * Um comando do artisan num processo NOVO (os providers carregados neste
-     * processo são os de antes do Composer).
-     *
-     * @param  list<string>  $arguments
-     */
-    private function artisan(array $arguments): bool
-    {
-        $result = Process::path($this->laravel->basePath())
-            ->forever()
-            ->run([PHP_BINARY, 'artisan', ...$arguments, '--no-interaction'], function (string $type, string $line): void {
-                $this->output->write($line);
-            });
-
-        return $result->successful();
-    }
-
-    /**
-     * A restrição de versão dos pacotes do kit neste projeto — a mesma do
-     * foundation no composer.json (ex.: `2.x-dev` no monorepo, `^2.0` num
-     * projeto criado pelo Packagist).
-     */
-    private function kitConstraint(): string
-    {
-        $composer = json_decode((string) @file_get_contents($this->projectPath('composer.json')), true);
-        $constraint = is_array($composer) ? ($composer['require'][Kit::package('foundation')] ?? null) : null;
-
-        return is_string($constraint) && $constraint !== '' ? $constraint : '^2.0';
-    }
-
-    /**
-     * Um arquivo da raiz do projeto (a pasta do .env — a raiz do aplicativo,
-     * salvo quando ele mudou de lugar com useEnvironmentPath()).
-     */
-    private function projectPath(string $file): string
-    {
-        return dirname($this->laravel->environmentFilePath()).'/'.$file;
-    }
-
-    /**
-     * @param  list<string>  $needs
-     */
-    private function dependencyMessage(string $module, array $needs): string
-    {
-        return __('installer.errors.missing_dependency', [
-            'module' => __("installer.modules.{$module}"),
-            'needs' => $this->labels($needs),
-        ]);
-    }
-
-    /**
-     * @param  list<string>  $modules
-     */
-    private function labels(array $modules): string
-    {
-        return implode(', ', array_map(static fn (string $module): string => __("installer.modules.{$module}"), $modules));
     }
 }

@@ -12,9 +12,27 @@ use Twstec\Kit\Installer\Contracts\Inventory;
 final class FakeInventory implements Inventory
 {
     /**
-     * @param  list<string>  $modules
+     * @param  list<string>  $modules  os opcionais instalados
+     * @param  list<string>  $required  os obrigatórios instalados (um
+     *                                  aplicativo que só tem o instalador tem
+     *                                  só o foundation)
      */
-    public function __construct(public array $modules, public bool $demo = false) {}
+    public function __construct(
+        public array $modules,
+        public bool $demo = false,
+        public array $required = ['foundation', 'auth'],
+        public bool $userModel = true,
+    ) {}
+
+    public function userModelReady(): bool
+    {
+        return $this->userModel;
+    }
+
+    public function installedModules(): array
+    {
+        return [...$this->required, ...$this->modules];
+    }
 
     public function optionalModules(): array
     {

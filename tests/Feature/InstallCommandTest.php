@@ -273,3 +273,66 @@ it('interativo: recusar a confirmação não muda nada', function (): void {
     expect($this->composer->calls)->toBe([]);
     Process::assertNothingRan();
 });
+
+// -----------------------------------------------------------------------------
+// A escolha PELO AMBIENTE (TWS_KIT_WITH / TWS_KIT_WITHOUT): é por onde o
+// comando único (composer create-project twstec/kit) e quem cria o projeto
+// sem terminal passam a escolha ao post-create-project-cmd do starter — o
+// Composer não repassa opções ao script.
+// -----------------------------------------------------------------------------
+
+function kitEnvironment(?string $with, ?string $without): void
+{
+    putenv($with === null ? 'TWS_KIT_WITH' : "TWS_KIT_WITH={$with}");
+    putenv($without === null ? 'TWS_KIT_WITHOUT' : "TWS_KIT_WITHOUT={$without}");
+}
+
+afterEach(function (): void {
+    kitEnvironment(null, null);
+});
+
+it('TWS_KIT_WITHOUT vale como --without — e, com ela, não há pergunta', function (): void {
+    kitEnvironment(null, 'admin');
+
+    // Sem --no-interaction: se perguntasse, o teste reprovaria (pergunta
+    // não esperada).
+    $this->artisan('tws:install')->assertSuccessful();
+
+    expect($this->composer->calls)->toBe([['remove', ['twstec/kit-admin'], false]]);
+});
+
+it('o comando único: os pacotes já estão como o menu escolheu — nada muda no Composer, só chaves e banco', function (): void {
+    $this->project(['accounts', 'admin']);
+    kitEnvironment('accounts,admin', 'uploads');
+
+    $this->artisan('tws:install', ['--graceful' => true])->assertSuccessful();
+
+    expect($this->composer->calls)->toBe([])
+        ->and(artisanRuns())->toBe(['migrate --force'])
+        ->and($this->envFile())->toMatch('/^APP_KEY=base64:/m')->toMatch('/^API_KEYS_HASH_PEPPER=[A-Za-z0-9]{64}$/m');
+});
+
+it('variáveis presentes e vazias também valem como escolha (nada a mudar, sem pergunta)', function (): void {
+    kitEnvironment('', '');
+
+    $this->artisan('tws:install')->assertSuccessful();
+
+    expect($this->composer->calls)->toBe([]);
+});
+
+it('a opção vence a variável', function (): void {
+    kitEnvironment(null, 'admin');
+
+    $this->artisan('tws:install', ['--without' => 'uploads'])->assertSuccessful();
+
+    expect($this->composer->calls)->toBe([['remove', ['twstec/kit-uploads'], false]]);
+});
+
+it('variável com escolha inválida é recusada como a opção (uploads sem contas), sem mexer em nada', function (): void {
+    kitEnvironment(null, 'accounts');
+
+    $this->artisan('tws:install')->expectsOutputToContain('twstec/kit-accounts')->assertFailed();
+
+    expect($this->composer->calls)->toBe([]);
+    Process::assertNothingRan();
+});
