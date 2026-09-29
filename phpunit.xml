@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    Suíte do pacote twstec/kit-installer, isolada do aplicativo: sobe uma
+    aplicação Laravel mínima (Orchestra Testbench) com o foundation e este
+    pacote. O Composer é de mentira (tests/Fixtures/FakeComposer) e os
+    comandos do artisan que o instalador roda em processo novo passam pelo
+    Process::fake — nenhum teste mexe num composer.json ou num banco de
+    verdade.
+-->
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="vendor/autoload.php"
+         colors="true"
+>
+    <testsuites>
+        <testsuite name="Feature">
+            <directory>tests/Feature</directory>
+        </testsuite>
+        <testsuite name="Architecture">
+            <directory>tests/Architecture</directory>
+        </testsuite>
+    </testsuites>
+    <source>
+        <include>
+            <directory>src</directory>
+        </include>
+    </source>
+    <!-- force + server: o container de desenvolvimento injeta o .env do
+         starter no ambiente, e o Laravel lê $_SERVER primeiro. -->
+    <php>
+        <env name="APP_ENV" value="testing"/>
+        <server name="APP_ENV" value="testing" force="true"/>
+        <env name="APP_LOCALE" value="en" force="true"/>
+        <server name="APP_LOCALE" value="en" force="true"/>
+        <env name="APP_FALLBACK_LOCALE" value="en" force="true"/>
+        <server name="APP_FALLBACK_LOCALE" value="en" force="true"/>
+        <env name="CACHE_STORE" value="array"/>
+        <server name="CACHE_STORE" value="array" force="true"/>
+        <env name="DB_CONNECTION" value="testing" force="true"/>
+        <server name="DB_CONNECTION" value="testing" force="true"/>
+    </php>
+</phpunit>

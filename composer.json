@@ -1,0 +1,70 @@
+{
+    "$schema": "https://getcomposer.org/schema.json",
+    "name": "twstec/kit-installer",
+    "description": "Instalador do TWS Laravel Starter Kit (php artisan tws:install): escolhe os módulos opcionais (contas, uploads, painel /admin) e a demonstração, aplica com o Composer, roda as migrations e gera a APP_KEY e o pepper das chaves de API quando faltam. Ferramenta de desenvolvimento — instale em require-dev.",
+    "type": "library",
+    "license": "MIT",
+    "homepage": "https://github.com/kelvindk9w/tws-laravel-starter-kit",
+    "authors": [
+        {
+            "name": "TWS",
+            "homepage": "https://github.com/kelvindk9w"
+        }
+    ],
+    "support": {
+        "issues": "https://github.com/kelvindk9w/tws-laravel-starter-kit/issues",
+        "source": "https://github.com/kelvindk9w/tws-laravel-starter-kit/tree/desenvolvimento/packages/installer",
+        "docs": "https://github.com/kelvindk9w/tws-laravel-starter-kit/tree/desenvolvimento/docs"
+    },
+    "keywords": [
+        "laravel",
+        "installer",
+        "starter-kit"
+    ],
+    "require": {
+        "php": "^8.4",
+        "laravel/framework": "^13.17",
+        "laravel/prompts": "^0.3",
+        "twstec/kit-foundation": "^2.0"
+    },
+    "require-dev": {
+        "laravel/pint": "^1.27",
+        "orchestra/testbench": "^11.0",
+        "pestphp/pest": "^4.7"
+    },
+    "autoload": {
+        "psr-4": {
+            "Twstec\\Kit\\Installer\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Twstec\\Kit\\Installer\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Twstec\\Kit\\Installer\\InstallerServiceProvider"
+            ]
+        },
+        "branch-alias": {
+            "dev-main": "2.x-dev"
+        }
+    },
+    "scripts": {
+        "test": "pest",
+        "lint": "pint --test"
+    },
+    "config": {
+        "sort-packages": true,
+        "allow-plugins": {
+            "pestphp/pest-plugin": true
+        },
+        "platform": {
+            "php": "8.4.24"
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}
