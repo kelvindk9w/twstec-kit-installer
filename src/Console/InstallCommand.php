@@ -14,6 +14,7 @@ use Twstec\Kit\Installer\Contracts\Composer;
 use Twstec\Kit\Installer\Contracts\Inventory;
 use Twstec\Kit\Installer\Dev\DevEnvironment;
 use Twstec\Kit\Installer\Dev\Host;
+use Twstec\Kit\Installer\Support\CreatedProject;
 use Twstec\Kit\Installer\Support\EnvironmentFile;
 use Twstec\Kit\Installer\Support\InstallPlan;
 use Twstec\Kit\Installer\Support\KitConstraint;
@@ -69,6 +70,15 @@ use function Laravel\Prompts\multiselect;
  * `docker compose up -d`: o próximo projeto criado não os repete. No monorepo
  * (sem compose.yaml na raiz do starter), nada disso acontece.
  *
+ * O PROJETO CRIADO passa a ser do projeto, na mesma hora (Support\CreatedProject):
+ * o .env.example, o banco da suíte PostgreSQL (`<banco>_test`, o mesmo do
+ * db-init do compose.yaml), o banco padrão do docker-compose.prod.yml, o
+ * composer.json (nome `<vendor>/<nome>` — TWS_KIT_VENDOR, padrão `app` —,
+ * licença — TWS_KIT_LICENSE, padrão `proprietary` —, sem a identidade do
+ * starter), a licença MIT do kit em NOTICE-KIT-MIT.txt e o CI base em
+ * .github/workflows/ci.yml. Vendor ou licença inválidos param ANTES de
+ * qualquer mudança, como o nome e o número.
+ *
  * IDEMPOTENTE: rodar de novo com a mesma escolha não muda pacote nenhum e não
  * regera chave que já existe. RECUSA produção sem `--force`: tirar pacote e
  * mexer no .env não é coisa de servidor.
@@ -91,6 +101,13 @@ final class InstallCommand extends Command
     ];
 
     protected $name = 'tws:install';
+
+    /**
+     * A identidade do projeto criado (composer.json): o pacote e a licença.
+     *
+     * @var array{package: string, license: string}|null
+     */
+    private ?array $identity = null;
 
     /**
      * Linhas do relatório final: rótulo => resultado.
@@ -564,6 +581,26 @@ final class InstallCommand extends Command
             return false;
         }
 
+        $vendor = strtolower(trim((string) getenv('TWS_KIT_VENDOR')));
+        $vendor = $vendor === '' ? 'app' : $vendor;
+
+        if (! CreatedProject::validVendor($vendor)) {
+            $this->components->error(__('installer.dev.vendor_invalid', ['vendor' => $vendor]));
+
+            return false;
+        }
+
+        $license = trim((string) getenv('TWS_KIT_LICENSE'));
+        $license = $license === '' ? 'proprietary' : $license;
+
+        if (! CreatedProject::validLicense($license)) {
+            $this->components->error(__('installer.dev.license_invalid', ['license' => $license]));
+
+            return false;
+        }
+
+        $this->identity = ['package' => "{$vendor}/{$name}", 'license' => $license];
+
         [$uid, $gid] = $this->owner();
 
         return DevEnvironment::environment(
@@ -617,6 +654,39 @@ final class InstallCommand extends Command
             'slot' => $values['DEV_SLOT'],
             'url' => $values['APP_URL'],
         ]);
+
+        $this->personalize($values);
+    }
+
+    /**
+     * O projeto criado com os valores DELE (ver Support\CreatedProject).
+     *
+     * @param  array<string, string>  $values  o Docker de desenvolvimento gravado no .env
+     */
+    private function personalize(array $values): void
+    {
+        $project = new CreatedProject(dirname($this->laravel->environmentFilePath()));
+        $database = $values['DB_DATABASE'];
+
+        $project->environmentExample(array_intersect_key($values, array_flip(['APP_URL', 'PLATFORM_OFFICIAL_URL', 'DB_DATABASE', 'SESSION_COOKIE'])));
+        $project->testDatabase($database);
+        $project->productionDatabase($database);
+
+        if ($this->identity !== null) {
+            $project->composerIdentity($this->identity['package'], $this->identity['license']);
+            $notice = $project->kitLicenseNotice(__('installer.dev.notice_header', ['license' => $this->identity['license']]));
+            $this->report[__('installer.dev.identity_step')] = __($notice ? 'installer.dev.identity_notice' : 'installer.dev.identity', [
+                'package' => $this->identity['package'],
+                'license' => $this->identity['license'],
+                'notice' => CreatedProject::NOTICE_FILE,
+            ]);
+        }
+
+        $this->report[__('installer.dev.tests_step')] = __('installer.dev.tests', ['database' => $database.'_test']);
+
+        if ($project->continuousIntegration()) {
+            $this->report[__('installer.dev.ci_step')] = __('installer.dev.ci', ['workflow' => CreatedProject::CI_WORKFLOW]);
+        }
     }
 
     private function migrate(): bool

@@ -57,9 +57,12 @@ final class DevEnvironment
     public const DATABASE_PROFILE = 'db-port';
 
     /**
-     * O banco da suíte contra o PostgreSQL (phpunit.pgsql.xml dos starters).
+     * O limite das rotas sensíveis (login, cadastro, códigos) no
+     * DESENVOLVIMENTO, por minuto: a suíte E2E entra e cadastra em paralelo,
+     * do mesmo IP, e com o 5 da produção receberia 429. A produção continua
+     * com 5 (config/security.php e .env.prod.example).
      */
-    public const TEST_DATABASE = 'tws_starter_test';
+    public const DEV_SENSITIVE_RATE_LIMIT = 30;
 
     /**
      * As portas de um número.
@@ -262,6 +265,9 @@ final class DevEnvironment
     /**
      * As variáveis do .env do projeto para o Docker de desenvolvimento.
      *
+     * O banco da suíte contra o PostgreSQL é `<DB_DATABASE>_test` (o db-init
+     * do compose.yaml o cria; o instalador grava o mesmo no phpunit.pgsql.xml).
+     *
      * As senhas do banco e do Redis são do projeto (geradas), nunca uma
      * senha fixa do kit: nenhum dos dois é publicado na máquina por padrão,
      * e o banco, quando for, sai com a senha deste projeto.
@@ -297,6 +303,7 @@ final class DevEnvironment
             'REDIS_PASSWORD' => $secret(),
             'MAIL_HOST' => 'mailpit',
             'MAIL_PORT' => '1025',
+            'RATE_LIMIT_SENSITIVE' => (string) self::DEV_SENSITIVE_RATE_LIMIT,
         ];
     }
 }
