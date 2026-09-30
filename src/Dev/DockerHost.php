@@ -10,7 +10,10 @@ namespace Twstec\Kit\Installer\Dev;
  *
  * O QUE O DOCKER SABE (`docker inspect` de todos os containers, rodando ou
  * parados, e os rótulos do Compose nos volumes e nas redes): os projetos que
- * existem e as portas que cada um publica — com o NOME de quem usa.
+ * existem e as portas que cada um publica — com o NOME de quem usa. O
+ * container do próprio instalador (serviço `instalar`, one-off) não conta: o
+ * Compose o põe no projeto com o nome da pasta, que é o nome sugerido. Ele não
+ * cria rede (rede padrão do Docker) nem volume.
  *
  * O QUE MAIS OCUPA A PORTA:
  * - fora de container (o `composer create-project` na máquina): tenta abrir a
@@ -49,6 +52,11 @@ final class DockerHost implements Host
      * Rótulo do volume que reserva o número de um projeto criado (reserve()).
      */
     public const SLOT_LABEL = 'twstec.kit.slot';
+
+    /**
+     * O serviço do instalador no compose.yaml do twstec-kit.
+     */
+    public const INSTALLER_SERVICE = 'instalar';
 
     private ?bool $available = null;
 
@@ -180,7 +188,11 @@ final class DockerHost implements Host
             foreach (is_array($containers) ? $containers : [] as $container) {
                 $labels = (array) ($container['Config']['Labels'] ?? []);
 
-                if (isset($labels[self::PROBE_LABEL])) {
+                // Nem o teste de porta, nem o PRÓPRIO instalador: o `docker
+                // compose run --rm instalar` roda num container do projeto com o
+                // nome da pasta — que é o nome sugerido. Contá-lo recusaria o
+                // nome da pasta de todo mundo.
+                if (isset($labels[self::PROBE_LABEL]) || self::isInstaller($labels)) {
                     continue;
                 }
 
@@ -235,6 +247,19 @@ final class DockerHost implements Host
         sort($projects);
         $this->projects = $projects;
         ksort($this->published);
+    }
+
+    /**
+     * Um container do instalador em container (`docker compose run instalar`
+     * do twstec-kit): o serviço `instalar`, de uma vez (one-off). Não é um
+     * projeto nem publica porta.
+     *
+     * @param  array<string, mixed>  $labels
+     */
+    public static function isInstaller(array $labels): bool
+    {
+        return ($labels['com.docker.compose.service'] ?? null) === self::INSTALLER_SERVICE
+            && strtolower((string) ($labels['com.docker.compose.oneoff'] ?? '')) === 'true';
     }
 
     /**
