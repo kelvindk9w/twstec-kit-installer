@@ -18,12 +18,22 @@ final class FakeComposer implements Composer
      */
     public array $calls = [];
 
+    /**
+     * O que o Composer escreve quando falha (ex.: a mensagem de extensão que
+     * falta).
+     */
+    public string $failureOutput = '';
+
     public function __construct(public bool $fails = false) {}
 
     public function require(array $packages, bool $dev, Closure $output): bool
     {
         $this->calls[] = ['require', $packages, $dev];
         $output('out', 'composer require '.implode(' ', $packages)."\n");
+
+        if ($this->fails && $this->failureOutput !== '') {
+            $output('err', $this->failureOutput);
+        }
 
         return ! $this->fails;
     }

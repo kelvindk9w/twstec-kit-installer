@@ -12,6 +12,9 @@ use Twstec\Kit\Foundation\Kit;
 use Twstec\Kit\Installer\Console\Concerns\InteractsWithProject;
 use Twstec\Kit\Installer\Contracts\Composer;
 use Twstec\Kit\Installer\Contracts\Inventory;
+use Twstec\Kit\Installer\Dev\DevEnvironment;
+use Twstec\Kit\Installer\Dev\Host;
+use Twstec\Kit\Installer\Support\EnvironmentFile;
 use Twstec\Kit\Installer\Support\InstallPlan;
 use Twstec\Kit\Installer\Support\KitConstraint;
 
@@ -49,6 +52,22 @@ use function Laravel\Prompts\multiselect;
  * faltar), a APP_KEY e o pepper dedicado das chaves de API quando faltam; e
  * as migrations. Os comandos do artisan rodam num PROCESSO NOVO: depois do
  * Composer, este processo ainda tem na memória os providers de antes.
+ *
+ * DOCKER DE DESENVOLVIMENTO: num projeto criado (com o compose.yaml de
+ * desenvolvimento na raiz — o do starter publicado), grava no .env, UMA vez
+ * (enquanto não houver COMPOSE_PROJECT_NAME), o nome do projeto
+ * (COMPOSE_PROJECT_NAME, banco, cookie de sessão, APP_URL
+ * http://<nome>.localhost:<porta>), as portas do número escolhido (site 808N,
+ * e-mails 802N, Vite 803N, banco 804N), o uid/gid de quem é dono dos arquivos
+ * e as senhas do banco e do Redis, geradas. O nome e o número vêm de
+ * TWS_KIT_NAME e TWS_KIT_SLOT (o comando único passa o que o menu perguntou;
+ * TWS_KIT_EXPOSE_DB publica o banco) — conferidos: nome de projeto Docker que
+ * já existe e número com porta ocupada são recusados antes de qualquer
+ * mudança. Sem elas, o nome da pasta (sem colidir) e o primeiro número com as
+ * quatro portas livres. O nome e o número ficam reservados no Docker (o
+ * volume do banco do projeto, com o número no rótulo) até o primeiro
+ * `docker compose up -d`: o próximo projeto criado não os repete. No monorepo
+ * (sem compose.yaml na raiz do starter), nada disso acontece.
  *
  * IDEMPOTENTE: rodar de novo com a mesma escolha não muda pacote nenhum e não
  * regera chave que já existe. RECUSA produção sem `--force`: tirar pacote e
@@ -101,7 +120,7 @@ final class InstallCommand extends Command
         ];
     }
 
-    public function handle(Composer $composer, Inventory $inventory): int
+    public function handle(Composer $composer, Inventory $inventory, Host $host): int
     {
         if ($this->laravel->isProduction() && ! $this->option('force')) {
             $this->components->error(__('installer.production_refused'));
@@ -110,6 +129,14 @@ final class InstallCommand extends Command
         }
 
         $this->components->info(__('installer.intro'));
+
+        // O Docker de desenvolvimento é conferido ANTES de mexer em qualquer
+        // coisa (nome em uso e porta ocupada param aqui).
+        $dev = $this->devEnvironment($host);
+
+        if ($dev === false) {
+            return self::FAILURE;
+        }
 
         $plan = $this->choose($inventory->optionalModules(), $inventory->demoInstalled());
 
@@ -131,9 +158,25 @@ final class InstallCommand extends Command
 
         $this->prepareEnvironment($plan);
 
-        $migrated = $this->migrate();
+        if (is_array($dev)) {
+            $this->writeDevEnvironment($dev);
+            // Até o primeiro `docker compose up -d`, nada mostra este projeto
+            // a quem criar o próximo: o nome e o número ficam reservados.
+            $host->reserve($dev['COMPOSE_PROJECT_NAME'], (int) $dev['DEV_SLOT']);
+        }
 
-        $this->summary($plan);
+        // Com o Docker de desenvolvimento configurado agora, o banco do .env
+        // é o do projeto no Docker, que ainda não subiu: as migrations rodam
+        // no primeiro `docker compose up -d` (o serviço init), sem o erro de
+        // conexão no meio da criação.
+        if (is_array($dev)) {
+            $this->report[__('installer.steps.migrate')] = __('installer.dev.migrate_on_up');
+            $migrated = true;
+        } else {
+            $migrated = $this->migrate();
+        }
+
+        $this->summary($plan, is_array($dev) ? $dev : null);
 
         return $migrated ? self::SUCCESS : self::FAILURE;
     }
@@ -332,9 +375,7 @@ final class InstallCommand extends Command
      */
     private function applyPackages(InstallPlan $plan, Composer $composer): bool
     {
-        $output = function (string $type, string $line): void {
-            $this->output->write($line);
-        };
+        $output = $this->composerOutput();
 
         if ($plan->removesDemo()) {
             $uninstalled = $this->artisan(['demo:uninstall', '--drop-tables', '--force']);
@@ -352,7 +393,7 @@ final class InstallCommand extends Command
             $this->components->info(__('installer.steps.demo_remove'));
 
             if (! $composer->remove([InstallPlan::DEMO_PACKAGE], true, $output)) {
-                $this->components->error(__('installer.failures.composer'));
+                $this->composerFailed();
 
                 return false;
             }
@@ -363,7 +404,7 @@ final class InstallCommand extends Command
             $this->components->info(__('installer.steps.composer_remove', ['packages' => implode(', ', $packages)]));
 
             if (! $composer->remove($packages, false, $output)) {
-                $this->components->error(__('installer.failures.composer'));
+                $this->composerFailed();
 
                 return false;
             }
@@ -375,7 +416,7 @@ final class InstallCommand extends Command
             $this->components->info(__('installer.steps.composer_require', ['packages' => implode(', ', $packages)]));
 
             if (! $composer->require($packages, false, $output)) {
-                $this->components->error(__('installer.failures.composer'));
+                $this->composerFailed();
 
                 return false;
             }
@@ -439,6 +480,145 @@ final class InstallCommand extends Command
         $this->report[__('installer.steps.pepper')] = __('installer.steps.pepper_generated');
     }
 
+    /**
+     * As variáveis do Docker de desenvolvimento para o .env; null quando não
+     * se aplica (sem o compose.yaml de desenvolvimento, ou já configurado);
+     * false (com o erro na tela) quando a escolha não vale.
+     *
+     * @return array<string, string>|false|null
+     */
+    private function devEnvironment(Host $host): array|false|null
+    {
+        if (! is_file($this->projectPath('compose.yaml'))) {
+            return null;
+        }
+
+        $current = new EnvironmentFile($this->laravel->environmentFilePath());
+
+        if ($current->filled('COMPOSE_PROJECT_NAME')) {
+            $this->report[__('installer.dev.step')] = __('installer.dev.kept', ['name' => (string) $current->get('COMPOSE_PROJECT_NAME')]);
+
+            return null;
+        }
+
+        $projects = $host->projects();
+        $name = trim((string) getenv('TWS_KIT_NAME'));
+
+        if ($name === '') {
+            $folder = trim((string) getenv('TWS_KIT_FOLDER'));
+            $name = DevEnvironment::suggestName($folder !== '' ? $folder : basename(dirname($this->laravel->environmentFilePath())), $projects);
+        } elseif (DevEnvironment::nameProblem($name) !== null) {
+            $this->components->error(__('installer.dev.name_invalid', ['name' => $name, 'suggestion' => DevEnvironment::suggestName(DevEnvironment::slug($name), $projects)]));
+
+            return false;
+        } elseif (DevEnvironment::taken($name, $projects)) {
+            $this->components->error(__('installer.dev.name_taken', ['name' => $name, 'suggestion' => DevEnvironment::suggestName($name, $projects)]));
+
+            return false;
+        }
+
+        $raw = trim((string) getenv('TWS_KIT_SLOT'));
+
+        if ($raw === '') {
+            $slot = DevEnvironment::firstFree($host);
+
+            if ($slot === null) {
+                $this->components->error(__('installer.dev.no_free_slot'));
+
+                return false;
+            }
+        } else {
+            $slot = DevEnvironment::parseSlot($raw);
+
+            if ($slot === null || $slot > DevEnvironment::MAX_SLOT) {
+                $this->components->error(__('installer.dev.slot_invalid', ['slot' => $raw]));
+
+                return false;
+            }
+
+            $occupants = DevEnvironment::occupants($host, $slot);
+
+            if ($occupants !== []) {
+                $described = [];
+
+                foreach ($occupants as $port => $owner) {
+                    $described[] = $port.' ('.($owner === '' ? __('installer.dev.other_program') : $owner).')';
+                }
+
+                $free = DevEnvironment::firstFree($host);
+                $this->components->error(__('installer.dev.slot_busy', [
+                    'slot' => (string) $slot,
+                    'occupants' => implode(', ', $described),
+                    'suggestion' => $free === null ? '-' : (string) $free,
+                ]));
+
+                return false;
+            }
+        }
+
+        $expose = strtolower(trim((string) getenv('TWS_KIT_EXPOSE_DB')));
+
+        if (! in_array($expose, ['', '0', '1', 'true', 'false', 'yes', 'no', 'sim', 'nao', 'não'], true)) {
+            $this->components->error(__('installer.dev.expose_invalid', ['value' => $expose]));
+
+            return false;
+        }
+
+        [$uid, $gid] = $this->owner();
+
+        return DevEnvironment::environment(
+            $name,
+            $slot,
+            in_array($expose, ['1', 'true', 'yes', 'sim'], true),
+            $uid,
+            $gid,
+            filter_var(getenv('TWS_KIT_VITE_POLLING'), FILTER_VALIDATE_BOOLEAN),
+            static fn (): string => bin2hex(random_bytes(16)),
+        );
+    }
+
+    /**
+     * O dono dos arquivos do projeto na máquina (os containers de
+     * desenvolvimento gravam como ele): o que o instalador do Docker informou
+     * (TWS_KIT_UID/TWS_KIT_GID) ou o deste processo.
+     *
+     * @return array{0: int, 1: int}
+     */
+    private function owner(): array
+    {
+        $uid = (int) getenv('TWS_KIT_UID');
+        $gid = (int) getenv('TWS_KIT_GID');
+
+        if ($uid <= 0 && function_exists('posix_getuid')) {
+            $uid = posix_getuid();
+            $gid = posix_getgid();
+        }
+
+        return [$uid, $gid];
+    }
+
+    /**
+     * @param  array<string, string>  $values
+     */
+    private function writeDevEnvironment(array $values): void
+    {
+        $env = $this->environmentFile();
+
+        if ($env === null) {
+            return;
+        }
+
+        foreach ($values as $key => $value) {
+            $env->set($key, $value);
+        }
+
+        $this->report[__('installer.dev.step')] = __('installer.dev.configured', [
+            'name' => $values['COMPOSE_PROJECT_NAME'],
+            'slot' => $values['DEV_SLOT'],
+            'url' => $values['APP_URL'],
+        ]);
+    }
+
     private function migrate(): bool
     {
         $graceful = (bool) $this->option('graceful');
@@ -458,7 +638,10 @@ final class InstallCommand extends Command
         return $graceful;
     }
 
-    private function summary(InstallPlan $plan): void
+    /**
+     * @param  array<string, string>|null  $dev  o Docker de desenvolvimento gravado agora
+     */
+    private function summary(InstallPlan $plan, ?array $dev = null): void
     {
         $this->newLine();
         $this->components->info(__('installer.summary.heading'));
@@ -500,7 +683,16 @@ final class InstallCommand extends Command
             $next[] = __('installer.summary.next_horizon');
         }
 
-        $next[] = __('installer.summary.next_serve');
+        // Windows: o Horizon não roda nativo (pcntl e posix ignoradas). O
+        // comando único (twstec/kit) avisa no resumo dele.
+        if ($this->windowsWithoutHorizon() && getenv('TWS_KIT_FROM_KIT') !== '1') {
+            $next[] = __('installer.extensions.windows_horizon');
+        }
+
+        $next[] = $dev === null ? __('installer.summary.next_serve') : __('installer.dev.next', [
+            'url' => $dev['APP_URL'],
+            'mail' => DevEnvironment::url($dev['COMPOSE_PROJECT_NAME'], (int) $dev['DEV_MAIL_PORT']),
+        ]);
 
         $this->newLine();
         $this->line('  <options=bold>'.__('installer.summary.next').'</>');

@@ -80,6 +80,32 @@ return [
         'env_missing' => 'Sem .env nem .env.example: APP_KEY e pepper não foram gerados.',
     ],
 
+    // Docker de desenvolvimento do projeto criado (compose.yaml na raiz).
+    'dev' => [
+        'step' => 'Docker de desenvolvimento',
+        'configured' => 'projeto :name, número :slot — :url',
+        'kept' => 'já configurado (COMPOSE_PROJECT_NAME=:name)',
+        'name_invalid' => 'Nome de projeto inválido em TWS_KIT_NAME: :name. Use letras minúsculas, números e hífen, começando por letra, de 2 a 40 caracteres (sugestão: :suggestion). Nada foi alterado.',
+        'name_taken' => 'Já existe um projeto Docker chamado :name nesta máquina (containers ou volumes, mesmo parado). Use outro nome em TWS_KIT_NAME — sugestão: :suggestion. Nada foi alterado.',
+        'slot_invalid' => 'Número de projeto inválido em TWS_KIT_SLOT: :slot. Use de 0 a 99. Nada foi alterado.',
+        'slot_busy' => 'O número :slot (TWS_KIT_SLOT) está em uso — portas :occupants. O primeiro número com as quatro portas livres é :suggestion. Nada foi alterado.',
+        'no_free_slot' => 'Nenhum número de 0 a 99 tem as quatro portas livres (site 808N, e-mails 802N, Vite 803N, banco 804N). Pare projetos que não está usando e rode de novo. Nada foi alterado.',
+        'expose_invalid' => 'Valor inválido em TWS_KIT_EXPOSE_DB: :value. Use 1 (publicar o banco) ou 0. Nada foi alterado.',
+        'migrate_on_up' => 'no primeiro docker compose up -d (o banco do projeto roda no Docker)',
+        'other_program' => 'outro programa',
+        'next' => 'Suba o projeto: docker compose up -d — depois abra :url (e-mails em :mail).',
+    ],
+
+    'extensions' => [
+        'missing' => 'Faltam extensões do PHP nesta máquina: :extensions. Há duas saídas:',
+        'install' => '1) Instalar as extensões no PHP desta máquina (confira com `php -m`):',
+        'windows' => '   • Windows: no php.ini (`php --ini` mostra onde está), tire o ";" do começo das linhas :lines (o PHP de windows.php.net já traz os arquivos).',
+        'linux' => '   • Ubuntu/Debian: sudo apt install :packages',
+        'mac' => '   • macOS (Homebrew): o PHP do `brew install php` já traz essas extensões; confira qual PHP o terminal usa (`which php`).',
+        'docker' => '2) Ou usar o caminho só com o Docker, que já traz tudo: apague esta pasta, baixe o twstec-kit (Code → Download ZIP) e, dentro da pasta dele, rode `docker compose run --rm instalar`.',
+        'windows_horizon' => 'Windows: o Horizon (o painel das filas) precisa das extensões pcntl e posix, que o PHP do Windows não tem — elas foram ignoradas na instalação, e só o Horizon fica de fora. O resto roda normalmente; para processar a fila, use `php artisan queue:work`. Nos próximos comandos do Composer neste projeto, defina antes `$env:COMPOSER_IGNORE_PLATFORM_REQ = "ext-pcntl,ext-posix"`. O caminho só com o Docker (docker compose run --rm instalar) roda tudo, inclusive o Horizon.',
+    ],
+
     'summary' => [
         'heading' => 'Pronto',
         'removed' => 'removido',

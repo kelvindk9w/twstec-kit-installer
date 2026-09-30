@@ -10,8 +10,10 @@ use Spatie\Backup\BackupServiceProvider;
 use Twstec\Kit\Foundation\FoundationServiceProvider;
 use Twstec\Kit\Installer\Contracts\Composer;
 use Twstec\Kit\Installer\Contracts\Inventory;
+use Twstec\Kit\Installer\Dev\Host;
 use Twstec\Kit\Installer\InstallerServiceProvider;
 use Twstec\Kit\Installer\Tests\Fixtures\FakeComposer;
+use Twstec\Kit\Installer\Tests\Fixtures\FakeHost;
 use Twstec\Kit\Installer\Tests\Fixtures\FakeInventory;
 
 /**
@@ -36,6 +38,8 @@ abstract class TestCase extends Testbench
     protected string $project;
 
     protected FakeComposer $composer;
+
+    protected FakeHost $host;
 
     protected function getPackageProviders($app): array
     {
@@ -70,6 +74,11 @@ abstract class TestCase extends Testbench
         $this->composer = new FakeComposer;
         $app->instance(Composer::class, $this->composer);
         $app->instance(Inventory::class, new FakeInventory(['accounts', 'uploads', 'admin']));
+
+        // A máquina do Docker de desenvolvimento: vazia (sem projetos, portas
+        // livres), salvo o que o teste acrescentar.
+        $this->host = new FakeHost;
+        $app->instance(Host::class, $this->host);
     }
 
     protected function tearDown(): void

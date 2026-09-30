@@ -155,10 +155,8 @@ final class AddCommand extends Command
 
         $this->components->info(__('installer.steps.composer_require', ['packages' => implode(', ', $packages)]));
 
-        if (! $composer->require($packages, false, function (string $type, string $line): void {
-            $this->output->write($line);
-        })) {
-            $this->components->error(__('installer.failures.composer'));
+        if (! $composer->require($packages, false, $this->composerOutput())) {
+            $this->composerFailed();
 
             return self::FAILURE;
         }

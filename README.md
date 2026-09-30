@@ -77,6 +77,31 @@ Idempotente. Não apaga arquivo do aplicativo — o starter esconde sozinho o qu
 As regras: `uploads` exige `accounts`; a demonstração exige todos os módulos
 opcionais (tirar um deles exige `--no-demo`); `foundation` e `auth` não saem.
 
+**Extensões do PHP.** O `composer require`/`remove` do instalador herda o que
+a pessoa pediu para ignorar (`COMPOSER_IGNORE_PLATFORM_REQ(S)`), e no Windows
+ignora sozinho só `ext-pcntl` e `ext-posix` (o Horizon; o resto do aplicativo
+roda sem elas — o resumo do `tws:install` avisa). Outra extensão que falte faz
+o comando parar com a lista e as duas saídas: instalar a extensão, ou o
+caminho só com o Docker (`docker compose run --rm instalar`).
+
+**Docker de desenvolvimento (projeto criado).** Com o `compose.yaml` de
+desenvolvimento na raiz do projeto (o do starter publicado), o `tws:install`
+grava no `.env`, **uma vez** (enquanto não houver `COMPOSE_PROJECT_NAME`), o
+nome do projeto (`COMPOSE_PROJECT_NAME`, o banco, o cookie de sessão e o
+`APP_URL` `http://<nome>.localhost:<porta>`), as portas do número do projeto
+(site `808N`, e-mails `802N`, Vite `803N`, banco `804N`; de 10 em diante, a
+centena seguinte), o dono dos arquivos (`DEV_UID`/`DEV_GID`) e senhas geradas
+para o banco e o Redis. O nome e o número vêm de `TWS_KIT_NAME` e
+`TWS_KIT_SLOT` (`TWS_KIT_EXPOSE_DB=1` publica o banco) — é por onde o comando
+único passa o que o menu perguntou — ou, sem elas, do nome da pasta (sem
+colidir com projeto Docker que já existe) e do primeiro número com as quatro
+portas livres. Nome em uso e número com porta ocupada são recusados antes de
+qualquer mudança. As migrations ficam para o primeiro `docker compose up -d`, e
+o nome e o número ficam reservados no Docker (o volume do banco do projeto)
+até lá. A conferência dos projetos e das portas é a mesma do `twstec/kit`
+(`src/Dev/`, o mesmo código — um teste do monorepo confere). No monorepo (sem
+`compose.yaml` na raiz do starter), nada disso acontece.
+
 Tudo em [docs/instalacao.md](https://github.com/kelvindk9w/tws-laravel-starter-kit/blob/desenvolvimento/docs/instalacao.md).
 
 ## Acrescentar pacotes a um aplicativo que já existe (`tws:add`)

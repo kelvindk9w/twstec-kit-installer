@@ -10,6 +10,8 @@ use Twstec\Kit\Installer\Console\AddCommand;
 use Twstec\Kit\Installer\Console\InstallCommand;
 use Twstec\Kit\Installer\Contracts\Composer;
 use Twstec\Kit\Installer\Contracts\Inventory;
+use Twstec\Kit\Installer\Dev\DockerHost;
+use Twstec\Kit\Installer\Dev\Host;
 use Twstec\Kit\Installer\Support\InstalledModules;
 use Twstec\Kit\Installer\Support\ProcessComposer;
 
@@ -32,6 +34,10 @@ final class InstallerServiceProvider extends ServiceProvider
     {
         $this->app->bindIf(Composer::class, ProcessComposer::class);
         $this->app->bindIf(Inventory::class, InstalledModules::class);
+        // A máquina (o Docker e as portas) do Docker de desenvolvimento: no
+        // container do instalador (TWS_KIT_IN_DOCKER=1), as portas são
+        // conferidas pelo próprio Docker.
+        $this->app->bindIf(Host::class, static fn (): Host => DockerHost::fromEnvironment(getenv()));
 
         PackageTranslations::register($this->app, dirname(__DIR__).'/lang');
     }
