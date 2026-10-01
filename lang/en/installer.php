@@ -67,6 +67,9 @@ return [
         'pepper_generated' => 'generated',
         'pepper_generated_previous' => 'generated; the current APP_KEY went to API_KEYS_PREVIOUS_HASH_PEPPERS (keys already issued keep working)',
         'pepper_kept' => 'already set',
+        'uploads_key' => 'Confidential uploads key (UPLOADS_ENCRYPTION_KEY)',
+        'uploads_key_generated' => 'generated (keep a copy in your secrets vault: without it, confidential files cannot be opened)',
+        'uploads_key_kept' => 'already set',
         'migrate' => 'Migrations (migrate)',
     ],
 
@@ -76,7 +79,7 @@ return [
         'composer' => 'Composer failed. See the output above; composer.json and composer.lock stay as Composer left them.',
         'migrate' => 'The migrations failed. Check the database in .env and run `php artisan migrate`.',
         'migrate_graceful' => 'Database unreachable: migrations were left for later (`php artisan migrate`).',
-        'env_missing' => 'No .env or .env.example: APP_KEY and pepper were not generated.',
+        'env_missing' => 'No .env or .env.example: APP_KEY, pepper and the confidential uploads key were not generated. Create the .env and run `php artisan key:generate` and, with uploads, `php artisan uploads:encryption-key`.',
     ],
 
     // Development Docker of the created project (compose.yaml at the root).

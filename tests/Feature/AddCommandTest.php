@@ -73,13 +73,30 @@ it('contas e uploads juntos valem', function (): void {
     ]);
 });
 
-it('uploads num aplicativo que já tem contas: vale', function (): void {
+it('uploads num aplicativo que já tem contas: vale — e gera a chave dos uploads confidenciais (sem mexer numa que já exista)', function (): void {
     $this->project(['accounts']);
     $this->composerJson(['require' => ['twstec/kit-foundation' => '^2.0@beta', 'twstec/kit-auth' => '^2.0@beta', 'twstec/kit-accounts' => '^2.0@beta']]);
 
+    $this->artisan('tws:add', ['modules' => ['uploads']])->expectsOutputToContain('UPLOADS_ENCRYPTION_KEY')->assertSuccessful();
+
+    expect($this->composer->calls)->toBe([['require', ['twstec/kit-uploads:^2.0@beta'], false]])
+        ->and($this->envFile())->toMatch('/^UPLOADS_ENCRYPTION_KEY=base64:[A-Za-z0-9+\/]{43}=$/m');
+
+    // Num .env que já tem a chave, ela fica.
+    file_put_contents($this->project.'/.env', "APP_KEY=base64:QUJDREVGR0hJSktMTU5PUFFSU1RVVldYWVowMTIzNDU=\nUPLOADS_ENCRYPTION_KEY=base64:MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=\n");
+    $this->project(['accounts']);
     $this->artisan('tws:add', ['modules' => ['uploads']])->assertSuccessful();
 
-    expect($this->composer->calls)->toBe([['require', ['twstec/kit-uploads:^2.0@beta'], false]]);
+    expect($this->envFile())->toContain('UPLOADS_ENCRYPTION_KEY=base64:MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=');
+});
+
+it('acrescentar o /admin não gera a chave dos confidenciais', function (): void {
+    $this->project([]);
+    $this->composerJson(['require' => ['twstec/kit-foundation' => '^2.0@beta', 'twstec/kit-auth' => '^2.0@beta']]);
+
+    $this->artisan('tws:add', ['modules' => ['admin']])->assertSuccessful();
+
+    expect($this->envFile())->not->toContain('UPLOADS_ENCRYPTION_KEY');
 });
 
 it('acrescenta o /admin — e diz o que o aplicativo faz agora (painel, model, coluna, primeiro admin, build)', function (): void {

@@ -70,7 +70,9 @@ Aplica, nesta ordem: `demo:uninstall --drop-tables` e a remoção da demo (se
 ela sai), `composer remove` dos módulos não escolhidos, `composer require` dos
 que faltam (com a restrição de versão do foundation no `composer.json` do
 projeto), `optimize:clear`, o `.env` (do `.env.example` se faltar), a
-`APP_KEY` e o pepper dedicado das chaves de API quando faltam, e `migrate`.
+`APP_KEY` e o pepper dedicado das chaves de API quando faltam, a chave dos
+uploads confidenciais (`UPLOADS_ENCRYPTION_KEY`, com o módulo de uploads; a
+que já existe nunca é trocada e o valor nunca aparece na tela), e `migrate`.
 Idempotente. Não apaga arquivo do aplicativo — o starter esconde sozinho o que
 é de um módulo ausente (`Kit::has`).
 
@@ -137,7 +139,7 @@ Mostra os módulos do kit instalados e os disponíveis; instala os escolhidos:
   versão do kit que está no `composer.json`;
 - `optimize:clear`, `vendor:publish --tag=<módulo>-config` (sem
   sobrescrever), `APP_KEY` se faltar, o pepper das chaves de API com contas,
-  `migrate`;
+  a chave dos uploads confidenciais com uploads, `migrate`;
 - o resumo diz o que só o aplicativo faz (model de usuário, foto, painel do
   Filament, primeiro admin).
 
@@ -158,7 +160,8 @@ instalado também (`Contracts\Inventory`), e os comandos do artisan que o
 instalador roda em processo novo passam pelo `Process::fake`. Prova as
 escolhas (opções, variáveis de ambiente e perguntas), a ordem dos passos, as
 recusas (produção sem `--force`, uploads sem contas, a demo com módulo
-faltando), o `.env` (APP_KEY, pepper e os peppers anteriores) e a
+faltando), o `.env` (APP_KEY, pepper, os peppers anteriores e a chave dos
+uploads confidenciais, que não aparece na saída) e a
 idempotência; e, no `tws:add`, o que está disponível, a autenticação que vem
 junto, o foundation virando requisito direto, a recusa de uploads sem contas
 (argumentos e menu) e o resumo por módulo.

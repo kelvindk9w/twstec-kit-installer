@@ -18,6 +18,7 @@ use Twstec\Kit\Installer\Support\CreatedProject;
 use Twstec\Kit\Installer\Support\EnvironmentFile;
 use Twstec\Kit\Installer\Support\InstallPlan;
 use Twstec\Kit\Installer\Support\KitConstraint;
+use Twstec\Kit\Installer\Support\UploadsEncryptionKey;
 
 use function Laravel\Prompts\confirm;
 use function Laravel\Prompts\multiselect;
@@ -447,7 +448,8 @@ final class InstallCommand extends Command
     }
 
     /**
-     * .env, APP_KEY e o pepper dedicado das chaves de API (com contas).
+     * .env, APP_KEY, o pepper dedicado das chaves de API (com contas) e a
+     * chave dos uploads confidenciais (com uploads).
      */
     private function prepareEnvironment(InstallPlan $plan): void
     {
@@ -464,6 +466,12 @@ final class InstallCommand extends Command
         }
 
         $this->report[__('installer.steps.app_key')] = __($appKeyExisted ? 'installer.steps.app_key_kept' : 'installer.steps.app_key_generated');
+
+        // Com uploads: a chave PRÓPRIA dos uploads confidenciais (nunca a
+        // APP_KEY). Já definida, fica — os arquivos cifrados dependem dela.
+        if (in_array('uploads', $plan->target, true)) {
+            $this->report[__('installer.steps.uploads_key')] = __(UploadsEncryptionKey::ensure($env) ? 'installer.steps.uploads_key_generated' : 'installer.steps.uploads_key_kept');
+        }
 
         if (! in_array('accounts', $plan->target, true)) {
             return;

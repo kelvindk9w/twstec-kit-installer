@@ -14,6 +14,7 @@ use Twstec\Kit\Installer\Console\Concerns\InteractsWithProject;
 use Twstec\Kit\Installer\Contracts\Composer;
 use Twstec\Kit\Installer\Contracts\Inventory;
 use Twstec\Kit\Installer\Support\KitConstraint;
+use Twstec\Kit\Installer\Support\UploadsEncryptionKey;
 
 use function Laravel\Prompts\confirm;
 use function Laravel\Prompts\multiselect;
@@ -349,7 +350,7 @@ final class AddCommand extends Command
     /**
      * APP_KEY se faltar; com contas acrescentadas agora, o pepper dedicado
      * das chaves de API (nenhuma chave foi emitida antes, então nada vai para
-     * os peppers anteriores).
+     * os peppers anteriores); com uploads, a chave dos confidenciais.
      *
      * @param  list<string>  $added
      */
@@ -369,6 +370,11 @@ final class AddCommand extends Command
         if (in_array('accounts', $added, true) && ! $env->filled('API_KEYS_HASH_PEPPER')) {
             $env->set('API_KEYS_HASH_PEPPER', Str::random(64));
             $this->report[__('installer.steps.pepper')] = __('installer.steps.pepper_generated');
+        }
+
+        // Uploads acrescentados agora: a chave própria dos confidenciais.
+        if (in_array('uploads', $added, true)) {
+            $this->report[__('installer.steps.uploads_key')] = __(UploadsEncryptionKey::ensure($env) ? 'installer.steps.uploads_key_generated' : 'installer.steps.uploads_key_kept');
         }
     }
 

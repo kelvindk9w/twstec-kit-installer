@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Illuminate\Process\PendingProcess;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Process;
 use Twstec\Kit\Installer\Contracts\Composer;
 use Twstec\Kit\Installer\Tests\Fixtures\FakeComposer;
@@ -214,6 +215,44 @@ it('sem o módulo de contas, não gera pepper (não há chaves de API)', functio
 
     expect($this->envFile())->toContain('APP_KEY=base64:')
         ->not->toMatch('/^API_KEYS_HASH_PEPPER=/m');
+});
+
+it('com UPLOADS, gera a chave PRÓPRIA dos uploads confidenciais no .env — nunca a APP_KEY, nunca na tela', function (): void {
+    $this->artisan('tws:install', ['--no-interaction' => true])->expectsOutputToContain('UPLOADS_ENCRYPTION_KEY')->assertSuccessful();
+
+    $env = $this->envFile();
+
+    preg_match('/^UPLOADS_ENCRYPTION_KEY=(.*)$/m', $env, $chave);
+    preg_match('/^APP_KEY=(.*)$/m', $env, $appKey);
+
+    expect($chave[1] ?? '')->toMatch('/^base64:[A-Za-z0-9+\/]{43}=$/')
+        ->and(strlen((string) base64_decode(substr($chave[1], 7), true)))->toBe(32)
+        ->and($chave[1])->not->toBe($appKey[1] ?? null)
+        ->and(substr_count($env, 'UPLOADS_ENCRYPTION_KEY='))->toBe(1);
+
+    // Chave já definida não é trocada (os arquivos cifrados dependem dela).
+    $this->artisan('tws:install', ['--no-interaction' => true])->assertSuccessful();
+
+    expect($this->envFile())->toContain('UPLOADS_ENCRYPTION_KEY='.$chave[1]);
+});
+
+it('a chave dos confidenciais não aparece na saída do instalador', function (): void {
+    $this->withoutMockingConsoleOutput();
+
+    Artisan::call('tws:install', ['--no-interaction' => true]);
+    $saida = Artisan::output();
+
+    preg_match('/^UPLOADS_ENCRYPTION_KEY=(.*)$/m', $this->envFile(), $chave);
+
+    expect($chave[1] ?? '')->not->toBe('')
+        ->and($saida)->toContain('UPLOADS_ENCRYPTION_KEY')
+        ->and($saida)->not->toContain(substr($chave[1], 7, 20));
+});
+
+it('sem o módulo de uploads, não gera a chave dos confidenciais', function (): void {
+    $this->artisan('tws:install', ['--without' => 'uploads,admin'])->assertSuccessful();
+
+    expect($this->envFile())->not->toMatch('/^UPLOADS_ENCRYPTION_KEY=/m');
 });
 
 it('é idempotente: a segunda rodada não muda pacote nem regera chave', function (): void {

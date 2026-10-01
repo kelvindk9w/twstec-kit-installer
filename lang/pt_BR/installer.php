@@ -68,6 +68,9 @@ return [
         'pepper_generated' => 'gerado',
         'pepper_generated_previous' => 'gerado; a APP_KEY atual foi para API_KEYS_PREVIOUS_HASH_PEPPERS (chaves já emitidas continuam valendo)',
         'pepper_kept' => 'já definido',
+        'uploads_key' => 'Chave dos uploads confidenciais (UPLOADS_ENCRYPTION_KEY)',
+        'uploads_key_generated' => 'gerada (guarde uma cópia no cofre de segredos: sem ela, os arquivos confidenciais não abrem)',
+        'uploads_key_kept' => 'já definida',
         'migrate' => 'Migrations (migrate)',
     ],
 
@@ -77,7 +80,7 @@ return [
         'composer' => 'O Composer falhou. Veja a saída acima; o composer.json e o composer.lock ficam como o Composer os deixou.',
         'migrate' => 'As migrations falharam. Confira o banco no .env e rode `php artisan migrate`.',
         'migrate_graceful' => 'Banco inacessível: as migrations ficaram para depois (`php artisan migrate`).',
-        'env_missing' => 'Sem .env nem .env.example: APP_KEY e pepper não foram gerados.',
+        'env_missing' => 'Sem .env nem .env.example: APP_KEY, pepper e a chave dos uploads confidenciais não foram gerados. Crie o .env e rode `php artisan key:generate` e, com uploads, `php artisan uploads:encryption-key`.',
     ],
 
     // Docker de desenvolvimento do projeto criado (compose.yaml na raiz).
