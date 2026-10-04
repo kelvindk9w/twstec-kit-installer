@@ -27,7 +27,7 @@ use function Laravel\Prompts\multiselect;
  * Num aplicativo que só instalou o instalador (`composer require --dev
  * twstec/kit-installer`), o foundation já veio como dependência dele — e,
  * se não for requisito direto do projeto, passa a ser; `auth`, `accounts`,
- * `uploads` e `admin` estão disponíveis.
+ * `uploads`, `admin` e `webhooks` estão disponíveis.
  *
  * INTERATIVO (terminal, sem argumento): pergunta com Laravel Prompts, só com
  * os disponíveis. NÃO INTERATIVO: `php artisan tws:add accounts admin`.
@@ -60,11 +60,12 @@ final class AddCommand extends Command
      *
      * @var list<string>
      */
-    public const ADDABLE = ['auth', 'accounts', 'uploads', 'admin'];
+    public const ADDABLE = ['auth', 'accounts', 'uploads', 'admin', 'webhooks'];
 
     /**
      * Os módulos que ligam a conta pessoal aos eventos do model de usuário do
-     * aplicativo JÁ NO BOOT (o de contas, e o de uploads, que vem com ele):
+     * aplicativo JÁ NO BOOT (o de contas, e o de uploads e o de webhooks, que
+     * vêm com ele):
      * sem o model com o contrato da autenticação do kit, o aplicativo nem
      * sobe depois do `composer require` (o kit-auth falha alto, de
      * propósito). Recusados antes, com o caminho: a autenticação primeiro, o
@@ -72,7 +73,7 @@ final class AddCommand extends Command
      *
      * @var list<string>
      */
-    public const NEEDS_KIT_USER_MODEL = ['accounts', 'uploads'];
+    public const NEEDS_KIT_USER_MODEL = ['accounts', 'uploads', 'webhooks'];
 
     protected $name = 'tws:add';
 

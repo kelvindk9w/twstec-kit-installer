@@ -120,6 +120,29 @@ it('--with e --without juntos: acrescenta um e tira outro', function (): void {
     ]);
 });
 
+it('webhooks: --with acrescenta (exige contas); tirar contas com webhooks é recusado; tudo de fora tira os quatro', function (): void {
+    $this->artisan('tws:install', ['--with' => 'webhooks'])->assertSuccessful();
+
+    expect($this->composer->calls)->toBe([['require', ['twstec/kit-webhooks:^2.0@beta'], false]]);
+
+    $this->composer->calls = [];
+    $this->project(['accounts', 'webhooks']);
+
+    $this->artisan('tws:install', ['--without' => 'accounts'])
+        ->expectsOutputToContain('twstec/kit-accounts')
+        ->assertFailed();
+
+    $this->project([]);
+    $this->artisan('tws:install', ['--with' => 'webhooks'])->assertFailed();
+
+    expect($this->composer->calls)->toBe([]);
+
+    $this->project(['accounts', 'uploads', 'admin', 'webhooks']);
+    $this->artisan('tws:install', ['--without' => 'accounts,uploads,admin,webhooks'])->assertSuccessful();
+
+    expect($this->composer->calls)->toBe([['remove', ['twstec/kit-accounts', 'twstec/kit-uploads', 'twstec/kit-admin', 'twstec/kit-webhooks'], false]]);
+});
+
 it('recusa uploads sem contas, sem mexer em nada', function (): void {
     $this->artisan('tws:install', ['--without' => 'accounts'])
         ->expectsOutputToContain('twstec/kit-accounts')
@@ -288,8 +311,9 @@ it('interativo: pergunta os módulos (já marcados os instalados) e a demo, most
             'accounts' => 'Accounts, API keys and projects (twstec/kit-accounts)',
             'uploads' => 'Secure uploads and profile photo (twstec/kit-uploads)',
             'admin' => '/admin panel with Filament (twstec/kit-admin)',
+            'webhooks' => 'Signed outgoing webhooks (twstec/kit-webhooks)',
         ])
-        ->expectsConfirmation('The demo requires every optional module (/admin panel with Filament (twstec/kit-admin)). With this choice it will be removed. Continue?', 'yes')
+        ->expectsConfirmation('The demo requires /admin panel with Filament (twstec/kit-admin). With this choice it will be removed. Continue?', 'yes')
         ->expectsConfirmation('Apply these changes?', 'yes')
         ->assertSuccessful();
 
@@ -305,6 +329,7 @@ it('interativo: recusar a confirmação não muda nada', function (): void {
             'accounts' => 'Accounts, API keys and projects (twstec/kit-accounts)',
             'uploads' => 'Secure uploads and profile photo (twstec/kit-uploads)',
             'admin' => '/admin panel with Filament (twstec/kit-admin)',
+            'webhooks' => 'Signed outgoing webhooks (twstec/kit-webhooks)',
         ])
         ->expectsConfirmation('Apply these changes?', 'no')
         ->assertFailed();

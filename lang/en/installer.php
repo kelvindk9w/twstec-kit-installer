@@ -6,9 +6,9 @@ declare(strict_types=1);
 // application wins: its own lang/<locale>/installer.php overrides these keys.
 
 return [
-    'description' => 'Chooses the optional kit modules (accounts, uploads, /admin panel) and the demo, and applies: Composer, migrations, APP_KEY and pepper',
+    'description' => 'Chooses the optional kit modules (accounts, uploads, /admin panel, webhooks) and the demo, and applies: Composer, migrations, APP_KEY and pepper',
     'options' => [
-        'with' => 'Optional modules to install or keep, comma separated (accounts,uploads,admin); without the option, the TWS_KIT_WITH variable applies',
+        'with' => 'Optional modules to install or keep, comma separated (accounts,uploads,admin,webhooks); without the option, the TWS_KIT_WITH variable applies',
         'without' => 'Optional modules to remove, comma separated; without the option, the TWS_KIT_WITHOUT variable applies',
         'no_demo' => 'Removes the kit demo (twstec/kit-demo)',
         'force' => 'Allows running in production',
@@ -24,13 +24,14 @@ return [
         'accounts' => 'Accounts, API keys and projects (twstec/kit-accounts)',
         'uploads' => 'Secure uploads and profile photo (twstec/kit-uploads)',
         'admin' => '/admin panel with Filament (twstec/kit-admin)',
+        'webhooks' => 'Signed outgoing webhooks (twstec/kit-webhooks)',
         'demo' => 'Kit demo (twstec/kit-demo)',
     ],
 
     'select_label' => 'Which optional modules do you want?',
-    'select_hint' => 'Space toggles; Enter confirms. Uploads needs Accounts.',
+    'select_hint' => 'Space toggles; Enter confirms. Uploads and Webhooks need Accounts.',
     'keep_demo' => 'Keep the kit demo (landing pages, showcase, demo accounts — development only)?',
-    'demo_must_go' => 'The demo requires every optional module (:modules). With this choice it will be removed. Continue?',
+    'demo_must_go' => 'The demo requires :modules. With this choice it will be removed. Continue?',
     'confirm_apply' => 'Apply these changes?',
     'aborted' => 'Nothing was changed.',
 
@@ -133,16 +134,16 @@ return [
 
     // php artisan tws:add — adding kit packages to an existing application.
     'add' => [
-        'description' => 'Adds kit packages (authentication, accounts, uploads, /admin panel) to an existing Laravel application: Composer, configuration, .env and migrations',
+        'description' => 'Adds kit packages (authentication, accounts, uploads, /admin panel, webhooks) to an existing Laravel application: Composer, configuration, .env and migrations',
         'arguments' => [
-            'modules' => 'Modules to add, space separated (auth accounts uploads admin)',
+            'modules' => 'Modules to add, space separated (auth accounts uploads admin webhooks)',
         ],
         'intro' => 'TWS Laravel Starter Kit packages in this application:',
         'available' => 'available',
         'nothing_available' => 'Every kit package is already installed.',
         'nothing_chosen' => 'No module chosen: nothing was changed.',
         'select_label' => 'Which modules do you want to add?',
-        'select_hint' => 'Space toggles; Enter confirms. Uploads needs Accounts; authentication comes along with any module.',
+        'select_hint' => 'Space toggles; Enter confirms. Uploads and Webhooks need Accounts; authentication comes along with any module.',
         'already_installed' => ':module is already installed.',
         'will_install' => 'will be installed',
         'comes_along' => 'comes along (required by the kit)',
@@ -156,6 +157,7 @@ return [
             'auth' => 'Authentication: the application user model implements Twstec\\Kit\\Auth\\Contracts\\AuthUser with the KitAuthenticatable trait (vendor/twstec/kit-auth/README.md).',
             'accounts' => 'Accounts: nothing else in the model — the personal account is created with each person; the API keys pepper was generated in .env (vendor/twstec/kit-accounts/README.md).',
             'uploads' => 'Uploads: for the profile photo, the HasAvatar trait in the model and the users.avatar_upload_id column in an application migration (vendor/twstec/kit-uploads/README.md).',
+            'webhooks' => 'Webhooks: declare the application events in webhooks.events (WEBHOOKS_EVENTS), dispatch with Webhooks::dispatch($account, \'order.created\', [...]) inside the transaction of the change and keep the queue and the scheduler running; the endpoint screens belong to the application (vendor/twstec/kit-webhooks/README.md).',
             'admin' => '/admin panel: a Filament PanelProvider with AdminPlugin::make(), the model with FilamentUser and the AccessesAdminPanel trait, the users.is_admin column; then php artisan user:make-admin email@example.com (vendor/twstec/kit-admin/README.md).',
         ],
     ],

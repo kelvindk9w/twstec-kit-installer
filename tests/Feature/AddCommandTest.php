@@ -62,6 +62,30 @@ it('RECUSA uploads sem contas, com a explicação e o comando certo — sem mexe
     Process::assertNothingRan();
 });
 
+it('RECUSA webhooks sem contas, com a explicação e o comando certo — sem mexer em nada', function (): void {
+    $this->artisan('tws:add', ['modules' => ['webhooks']])
+        ->expectsOutputToContain('needs Accounts, API keys and projects (twstec/kit-accounts). Add both together: php artisan tws:add accounts webhooks')
+        ->assertFailed();
+
+    expect($this->composer->calls)->toBe([]);
+    Process::assertNothingRan();
+});
+
+it('webhooks num aplicativo que já tem contas: vale, com a configuração publicada e as migrations', function (): void {
+    $this->project(['accounts']);
+
+    $this->artisan('tws:add', ['modules' => ['webhooks']])->assertSuccessful();
+
+    // O foundation e a autenticação entram como requisito DIRETO (hoje só
+    // vêm por dependência), como em todo tws:add deste aplicativo.
+    expect($this->composer->calls)->toBe([['require', ['twstec/kit-foundation:^2.0@beta', 'twstec/kit-auth:^2.0@beta', 'twstec/kit-webhooks:^2.0@beta'], false]])
+        ->and($this->runs->getArrayCopy())->toBe([
+            'optimize:clear',
+            'vendor:publish --tag=webhooks-config',
+            'migrate --force',
+        ]);
+});
+
 it('contas e uploads juntos valem', function (): void {
     $this->artisan('tws:add', ['modules' => ['uploads', 'accounts']])->assertSuccessful();
 
@@ -124,7 +148,7 @@ it('módulo já instalado: avisa e não faz nada', function (): void {
 });
 
 it('tudo instalado: nada disponível', function (): void {
-    $this->project(['accounts', 'uploads', 'admin']);
+    $this->project(['accounts', 'uploads', 'admin', 'webhooks']);
 
     $this->artisan('tws:add')->expectsOutputToContain('Every kit package is already installed.')->assertSuccessful();
 
@@ -133,7 +157,7 @@ it('tudo instalado: nada disponível', function (): void {
 
 it('sem terminal e sem argumento: diz quais estão disponíveis e como pedir', function (): void {
     $this->artisan('tws:add', ['--no-interaction' => true])
-        ->expectsOutputToContain('php artisan tws:add auth accounts uploads admin')
+        ->expectsOutputToContain('php artisan tws:add auth accounts uploads admin webhooks')
         ->assertFailed();
 
     expect($this->composer->calls)->toBe([]);
@@ -168,6 +192,7 @@ it('interativo: pergunta só os disponíveis, mostra o plano e pede confirmaçã
             'accounts' => 'Accounts, API keys and projects (twstec/kit-accounts)',
             'uploads' => 'Secure uploads and profile photo (twstec/kit-uploads)',
             'admin' => '/admin panel with Filament (twstec/kit-admin)',
+            'webhooks' => 'Signed outgoing webhooks (twstec/kit-webhooks)',
         ])
         ->expectsConfirmation('Apply these changes?', 'yes')
         ->assertSuccessful();
@@ -189,6 +214,7 @@ it('interativo: a pergunta NÃO aceita uploads sem contas', function (): void {
         ->expectsChoice('Which modules do you want to add?', ['uploads'], [
             'accounts' => 'Accounts, API keys and projects (twstec/kit-accounts)',
             'uploads' => 'Secure uploads and profile photo (twstec/kit-uploads)',
+            'webhooks' => 'Signed outgoing webhooks (twstec/kit-webhooks)',
         ])
         ->expectsOutputToContain('needs Accounts, API keys and projects (twstec/kit-accounts). Add both together: php artisan tws:add accounts uploads')
         ->assertFailed();

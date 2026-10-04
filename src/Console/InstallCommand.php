@@ -25,7 +25,7 @@ use function Laravel\Prompts\multiselect;
 
 /**
  * `php artisan tws:install` — a pessoa escolhe os módulos OPCIONAIS do kit
- * (contas, uploads, painel /admin) e se mantém a demonstração, e o instalador
+ * (contas, uploads, painel /admin, webhooks) e se mantém a demonstração, e o instalador
  * aplica.
  *
  * INTERATIVO (terminal, sem opção de escolha): pergunta com Laravel Prompts —
