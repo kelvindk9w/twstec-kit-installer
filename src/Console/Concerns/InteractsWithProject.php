@@ -95,7 +95,8 @@ trait InteractsWithProject
      */
     private function environmentFile(): ?EnvironmentFile
     {
-        $env = new EnvironmentFile($this->laravel->environmentFilePath());
+        // O .env guarda os segredos do projeto: só o dono lê (EnvironmentFile).
+        $env = new EnvironmentFile($this->laravel->environmentFilePath(), secret: true);
 
         if ($env->exists()) {
             return $env;
@@ -110,6 +111,7 @@ trait InteractsWithProject
         }
 
         copy($example, $env->path());
+        $env->protect();
         $this->components->info(__('installer.steps.env_created'));
 
         return $env;

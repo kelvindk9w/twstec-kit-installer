@@ -222,6 +222,26 @@ it('cria o .env do .env.example e gera a APP_KEY e o pepper dedicado (projeto no
         ->not->toMatch('/^API_KEYS_PREVIOUS_HASH_PEPPERS=/m');
 });
 
+it('o .env (segredos) fica só para o dono: 0600 quando o instalador o cria e quando grava num que já existia', function (): void {
+    $this->artisan('tws:install', ['--no-interaction' => true])->assertSuccessful();
+
+    expect(fileperms($this->project.'/.env') & 0777)->toBe(0600)
+        // O .env.example (versionado, sem segredo) não muda.
+        ->and(fileperms($this->project.'/.env.example') & 0777)->not->toBe(0600);
+
+    // O .env que o Composer copiou (post-root-package-install), com as
+    // permissões de sempre: o instalador grava as chaves e o fecha.
+    file_put_contents($this->project.'/.env', "APP_KEY=\n");
+    chmod($this->project.'/.env', 0644);
+
+    $this->artisan('tws:install', ['--no-interaction' => true])->assertSuccessful();
+
+    clearstatcache();
+
+    expect($this->envFile())->toMatch('/^APP_KEY=base64:/m')
+        ->and(fileperms($this->project.'/.env') & 0777)->toBe(0600);
+})->skip(PHP_OS_FAMILY === 'Windows', 'o Windows não tem as permissões do Unix');
+
 it('pepper novo num projeto que já tinha APP_KEY: a APP_KEY vai para os peppers anteriores', function (): void {
     file_put_contents($this->project.'/.env', "APP_KEY=base64:QUJDREVGR0hJSktMTU5PUFFSU1RVVldYWVowMTIzNDU=\n# API_KEYS_PREVIOUS_HASH_PEPPERS=\n");
 

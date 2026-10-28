@@ -13,10 +13,36 @@ use RuntimeException;
  * set() troca a linha ATIVA da variável; sem ela, escreve logo abaixo da
  * linha comentada de exemplo (`# CHAVE=`), para o valor ficar junto da
  * explicação do .env.example; sem nenhuma das duas, acrescenta no fim.
+ *
+ * $secret (o .env, com a APP_KEY, o pepper e as senhas): depois de cada
+ * escrita, o arquivo fica só para o dono (0600 — protect()). Os containers
+ * de desenvolvimento do kit rodam com o uid do dono da pasta, então continuam
+ * lendo. Num servidor em que OUTRO usuário (o do servidor web) lê o .env,
+ * dê a ele a leitura pelo grupo (chmod 640 e o grupo dele) — ver
+ * docs/instalacao.md.
  */
 final class EnvironmentFile
 {
-    public function __construct(private readonly string $path) {}
+    /**
+     * As permissões do arquivo de segredos: leitura e escrita só do dono.
+     */
+    public const SECRET_MODE = 0600;
+
+    public function __construct(
+        private readonly string $path,
+        private readonly bool $secret = false,
+    ) {}
+
+    /**
+     * Arquivo de segredos: só o dono lê e escreve (no Windows, sem efeito).
+     * Sem ser o dono, o chmod não muda nada — e a instalação segue.
+     */
+    public function protect(): void
+    {
+        if ($this->exists()) {
+            @chmod($this->path, self::SECRET_MODE);
+        }
+    }
 
     public function path(): string
     {
@@ -107,6 +133,10 @@ final class EnvironmentFile
     {
         if (file_put_contents($this->path, implode("\n", $lines)) === false) {
             throw new RuntimeException("Não foi possível gravar {$this->path}.");
+        }
+
+        if ($this->secret) {
+            $this->protect();
         }
     }
 
