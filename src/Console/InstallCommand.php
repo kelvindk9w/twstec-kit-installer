@@ -76,9 +76,10 @@ use function Laravel\Prompts\multiselect;
  * db-init do compose.yaml), o banco padrão do docker-compose.prod.yml, o
  * composer.json (nome `<vendor>/<nome>` — TWS_KIT_VENDOR, padrão `app` —,
  * licença — TWS_KIT_LICENSE, padrão `proprietary` —, sem a identidade do
- * starter), a licença MIT do kit em NOTICE-KIT-MIT.txt e o CI base em
- * .github/workflows/ci.yml. Vendor ou licença inválidos param ANTES de
- * qualquer mudança, como o nome e o número.
+ * starter), a licença MIT do kit em NOTICE-KIT-MIT.txt, o CI base em
+ * .github/workflows/ci.yml e o Dependabot modelo em .github/dependabot.yml.
+ * Vendor ou licença inválidos param ANTES de qualquer mudança, como o nome e
+ * o número.
  *
  * IDEMPOTENTE: rodar de novo com a mesma escolha não muda pacote nenhum e não
  * regera chave que já existe. RECUSA produção sem `--force`: tirar pacote e
@@ -694,6 +695,10 @@ final class InstallCommand extends Command
 
         if ($project->continuousIntegration()) {
             $this->report[__('installer.dev.ci_step')] = __('installer.dev.ci', ['workflow' => CreatedProject::CI_WORKFLOW]);
+        }
+
+        if ($project->dependabot()) {
+            $this->report[__('installer.dev.dependabot_step')] = __('installer.dev.dependabot', ['file' => CreatedProject::DEPENDABOT_CONFIG]);
         }
     }
 

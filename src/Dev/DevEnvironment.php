@@ -268,7 +268,7 @@ final class DevEnvironment
      * O banco da suíte contra o PostgreSQL é `<DB_DATABASE>_test` (o db-init
      * do compose.yaml o cria; o instalador grava o mesmo no phpunit.pgsql.xml).
      *
-     * As senhas do banco e do Redis são do projeto (geradas), nunca uma
+     * As senhas do banco (as dos dois papéis) e do Redis são do projeto (geradas), nunca uma
      * senha fixa do kit: nenhum dos dois é publicado na máquina por padrão,
      * e o banco, quando for, sai com a senha deste projeto.
      *
@@ -298,7 +298,11 @@ final class DevEnvironment
             'DB_HOST' => 'postgres',
             'DB_PORT' => '5432',
             'DB_DATABASE' => self::databaseName($name),
+            // Dois papéis no PostgreSQL (o compose.yaml e o .env.example): o
+            // da aplicação (DB_USERNAME) e o de migração, dono do banco
+            // (DB_MIGRATION_USERNAME) — cada um com a sua senha.
             'DB_PASSWORD' => $secret(),
+            'DB_MIGRATION_PASSWORD' => $secret(),
             'REDIS_HOST' => 'redis',
             'REDIS_PASSWORD' => $secret(),
             'MAIL_HOST' => 'mailpit',

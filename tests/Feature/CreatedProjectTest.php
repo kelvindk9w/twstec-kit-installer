@@ -72,6 +72,7 @@ beforeEach(function (): void {
     file_put_contents($this->project.'/LICENSE', "MIT License\n\nCopyright (c) 2026 TWS\n");
     mkdir($this->project.'/docker/dev', 0777, true);
     file_put_contents($this->project.'/docker/dev/ci.yml', "name: CI\n");
+    file_put_contents($this->project.'/docker/dev/dependabot.yml', "version: 2\n");
     file_put_contents($this->project.'/compose.yaml', "services: {}\n");
 
     $this->json = fn (string $file): array => json_decode((string) file_get_contents($this->project.'/'.$file), true);
@@ -168,6 +169,22 @@ it('o CI base vai para .github/workflows/ci.yml — sem sobrescrever um que o pr
     expect(($this->read)('.github/workflows/ci.yml'))->toBe($existing ? "name: meu CI\n" : "name: CI\n");
 })->with(['sem workflow' => false, 'com workflow' => true]);
 
+it('o Dependabot modelo vai para .github/dependabot.yml — sem sobrescrever um que o projeto já tenha', function (bool $existing): void {
+    putenv('TWS_KIT_NAME=loja');
+
+    if ($existing) {
+        mkdir($this->project.'/.github', 0777, true);
+        file_put_contents($this->project.'/.github/dependabot.yml', "version: 2\nupdates: []\n");
+    }
+
+    $this->artisan('tws:install', ['--no-interaction' => true])
+        ->expectsOutputToContain($existing ? 'CI' : '.github/dependabot.yml')
+        ->assertSuccessful();
+
+    expect(($this->read)('.github/dependabot.yml'))->toBe($existing ? "version: 2\nupdates: []\n" : "version: 2\n")
+        ->and(file_exists($this->project.'/docker/dev/dependabot.yml'))->toBe($existing);
+})->with(['sem Dependabot' => false, 'com Dependabot' => true]);
+
 it('TWS_KIT_VENDOR e TWS_KIT_LICENSE escolhem o vendor e a licença', function (): void {
     putenv('TWS_KIT_NAME=loja');
     putenv('TWS_KIT_VENDOR=Maria-Tech');
@@ -207,7 +224,9 @@ it('no monorepo (sem o compose.yaml de desenvolvimento), nada do projeto criado 
         ->and(file_exists($this->project.'/LICENSE'))->toBeTrue()
         ->and(file_exists($this->project.'/NOTICE-KIT-MIT.txt'))->toBeFalse()
         ->and(($this->read)('phpunit.pgsql.xml'))->toContain('tws_starter_react_test')
-        ->and(file_exists($this->project.'/docker/dev/ci.yml'))->toBeTrue();
+        ->and(file_exists($this->project.'/docker/dev/ci.yml'))->toBeTrue()
+        ->and(file_exists($this->project.'/docker/dev/dependabot.yml'))->toBeTrue()
+        ->and(file_exists($this->project.'/.github/dependabot.yml'))->toBeFalse();
 });
 
 it('o content-hash é o mesmo que o Composer calcula', function (): void {

@@ -22,10 +22,13 @@ use RuntimeException;
  *   do composer.lock acompanha (o Composer não avisa "lock desatualizado");
  * - `LICENSE` (a MIT do kit) vira `NOTICE-KIT-MIT.txt`: a MIT exige manter o
  *   aviso junto do código do kit, mas ela não é a licença do projeto;
- * - o CI base (`docker/dev/ci.yml`) vai para `.github/workflows/ci.yml`.
+ * - o CI base (`docker/dev/ci.yml`) vai para `.github/workflows/ci.yml`, e
+ *   o Dependabot modelo (`docker/dev/dependabot.yml`), para
+ *   `.github/dependabot.yml` — no monorepo, os dois ficam em `docker/dev/`:
+ *   um `.github/` no starter valeria no repositório espelho dele.
  *
  * Cada passo só age quando o arquivo existe, e nunca sobrescreve o que o
- * projeto já tem (NOTICE, workflow).
+ * projeto já tem (NOTICE, workflow, Dependabot).
  */
 final class CreatedProject
 {
@@ -49,6 +52,10 @@ final class CreatedProject
     public const CI_TEMPLATE = 'docker/dev/ci.yml';
 
     public const CI_WORKFLOW = '.github/workflows/ci.yml';
+
+    public const DEPENDABOT_TEMPLATE = 'docker/dev/dependabot.yml';
+
+    public const DEPENDABOT_CONFIG = '.github/dependabot.yml';
 
     public function __construct(private readonly string $root) {}
 
@@ -171,18 +178,16 @@ final class CreatedProject
      */
     public function continuousIntegration(): bool
     {
-        $template = $this->root.'/'.self::CI_TEMPLATE;
-        $workflow = $this->root.'/'.self::CI_WORKFLOW;
+        return $this->install(self::CI_TEMPLATE, self::CI_WORKFLOW);
+    }
 
-        if (! is_file($template) || is_file($workflow)) {
-            return false;
-        }
-
-        if (! is_dir(dirname($workflow)) && ! mkdir(dirname($workflow), 0777, true) && ! is_dir(dirname($workflow))) {
-            throw new RuntimeException('Não foi possível criar '.dirname($workflow).'.');
-        }
-
-        return rename($template, $workflow);
+    /**
+     * O Dependabot modelo no lugar que o GitHub lê (sem sobrescrever um que
+     * exista).
+     */
+    public function dependabot(): bool
+    {
+        return $this->install(self::DEPENDABOT_TEMPLATE, self::DEPENDABOT_CONFIG);
     }
 
     /**
@@ -205,6 +210,26 @@ final class CreatedProject
         ksort($relevant);
 
         return md5((string) json_encode($relevant, 0));
+    }
+
+    /**
+     * Um modelo de `docker/dev/` no lugar definitivo — só quando o modelo
+     * existe e o destino ainda não.
+     */
+    private function install(string $template, string $target): bool
+    {
+        $from = $this->root.'/'.$template;
+        $to = $this->root.'/'.$target;
+
+        if (! is_file($from) || is_file($to)) {
+            return false;
+        }
+
+        if (! is_dir(dirname($to)) && ! mkdir(dirname($to), 0777, true) && ! is_dir(dirname($to))) {
+            throw new RuntimeException('Não foi possível criar '.dirname($to).'.');
+        }
+
+        return rename($from, $to);
     }
 
     private function rewrite(string $file, string $pattern, string $replacement): bool

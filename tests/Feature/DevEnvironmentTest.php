@@ -86,7 +86,10 @@ it('com o nome e o número do menu: grava o projeto, as portas, o endereço e as
         // Nada da senha fixa do .env.example.
         ->and(($this->value)('DB_PASSWORD'))->toMatch('/^[0-9a-f]{32}$/')
         ->and(($this->value)('REDIS_PASSWORD'))->toMatch('/^[0-9a-f]{32}$/')
-        ->and(($this->value)('DB_PASSWORD'))->not->toBe(($this->value)('REDIS_PASSWORD'));
+        ->and(($this->value)('DB_PASSWORD'))->not->toBe(($this->value)('REDIS_PASSWORD'))
+        // O papel de migração (dono do banco) com senha própria, gerada.
+        ->and(($this->value)('DB_MIGRATION_PASSWORD'))->toMatch('/^[0-9a-f]{32}$/')
+        ->and(($this->value)('DB_MIGRATION_PASSWORD'))->not->toBe(($this->value)('DB_PASSWORD'));
 
     // O valor fica junto da explicação do .env.example.
     expect($this->envFile())->toContain("# COMPOSE_PROJECT_NAME=\nCOMPOSE_PROJECT_NAME=loja-da-maria\n");

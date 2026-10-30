@@ -106,6 +106,8 @@ return [
         'tests' => ':database (phpunit.pgsql.xml and the db-init service in compose.yaml)',
         'ci_step' => 'CI',
         'ci' => ':workflow (manual and weekly; see the README) and scripts/verificar',
+        'dependabot_step' => 'Dependabot',
+        'dependabot' => ':file (weekly; the twstec/* packages in their own group)',
         'next' => 'Start the project: docker compose up -d — then open :url (e-mails at :mail).',
     ],
 
