@@ -39,8 +39,14 @@ beforeEach(function (): void {
     file_put_contents($this->project.'/composer.lock', json_encode(['_readme' => ['...'], 'content-hash' => 'do-starter', 'packages' => []], JSON_PRETTY_PRINT)."\n");
 
     file_put_contents($this->project.'/.env.example', implode("\n", [
+        'APP_NAME="TWS Starter Kit"',
         'APP_KEY=',
         'APP_URL=http://127.0.0.1:8181',
+        'PLATFORM_NAME="TWS Starter Kit"',
+        'PLATFORM_REPO_URL=https://github.com/kelvindk9w/tws-laravel-starter-kit',
+        'PLATFORM_COMPANY_NAME=TWS',
+        'PLATFORM_COMPANY_URL=https://example.com',
+        'PLATFORM_VERSION=2.0.0-beta.18',
         'PLATFORM_OFFICIAL_URL=http://127.0.0.1:8181',
         '# COMPOSE_PROJECT_NAME=',
         'DB_DATABASE=tws_starter_react',
@@ -74,6 +80,8 @@ beforeEach(function (): void {
     file_put_contents($this->project.'/docker/dev/ci.yml', "name: CI\n");
     file_put_contents($this->project.'/docker/dev/dependabot.yml', "version: 2\n");
     file_put_contents($this->project.'/compose.yaml', "services: {}\n");
+    mkdir($this->project.'/.devcontainer');
+    file_put_contents($this->project.'/.devcontainer/devcontainer.json', "// Dev Container\n{\n    \"name\": \"TWS Laravel Starter Kit (React)\",\n    \"service\": \"app\"\n}\n");
 
     $this->json = fn (string $file): array => json_decode((string) file_get_contents($this->project.'/'.$file), true);
     $this->read = fn (string $file): string => (string) file_get_contents($this->project.'/'.$file);
@@ -115,6 +123,25 @@ it('troca os valores do starter pelos do projeto — e nenhum segredo vai para o
     // O banco padrão de produção.
     expect(substr_count(($this->read)('docker-compose.prod.yml'), '${PROD_POSTGRES_DB:-loja_da_maria}'))->toBe(2)
         ->and(($this->read)('docker-compose.prod.yml'))->not->toContain('tws_starter');
+});
+
+it('o projeto nasce com o nome dele no .env, no .env.example e no Dev Container — nada da identidade do kit', function (): void {
+    putenv('TWS_KIT_NAME=acme');
+
+    $this->artisan('tws:install', ['--no-interaction' => true])->assertSuccessful();
+
+    foreach (['.env.example' => ($this->read)('.env.example'), '.env' => $this->envFile()] as $file => $contents) {
+        expect($contents)->toContain("APP_NAME=acme\n", "PLATFORM_NAME=acme\n", "PLATFORM_VERSION=0.1.0\n")
+            ->toContain("PLATFORM_REPO_URL=\n", "PLATFORM_COMPANY_NAME=\n", "PLATFORM_COMPANY_URL=\n")
+            ->not->toContain('Starter Kit')
+            ->not->toContain('TWS')
+            ->not->toContain('tws-laravel-starter-kit')
+            ->not->toContain('2.0.0-beta');
+    }
+
+    expect(($this->read)('.devcontainer/devcontainer.json'))->toContain('"name": "acme"')
+        ->not->toContain('Starter Kit')
+        ->toContain('"service": "app"');
 });
 
 it('composer.json com a identidade do projeto (app/<nome>, proprietary) e o lock acompanhando', function (): void {

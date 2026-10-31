@@ -72,7 +72,9 @@ use function Laravel\Prompts\multiselect;
  * (sem compose.yaml na raiz do starter), nada disso acontece.
  *
  * O PROJETO CRIADO passa a ser do projeto, na mesma hora (Support\CreatedProject):
- * o .env.example, o banco da suíte PostgreSQL (`<banco>_test`, o mesmo do
+ * a identidade no .env e no .env.example (APP_NAME e PLATFORM_NAME com o nome
+ * do projeto, versão 0.1.0, sem o repositório e a empresa do kit), o nome do
+ * Dev Container, o .env.example, o banco da suíte PostgreSQL (`<banco>_test`, o mesmo do
  * db-init do compose.yaml), o banco padrão do docker-compose.prod.yml, o
  * composer.json (nome `<vendor>/<nome>` — TWS_KIT_VENDOR, padrão `app` —,
  * licença — TWS_KIT_LICENSE, padrão `proprietary` —, sem a identidade do
@@ -612,7 +614,7 @@ final class InstallCommand extends Command
 
         [$uid, $gid] = $this->owner();
 
-        return DevEnvironment::environment(
+        return [...DevEnvironment::environment(
             $name,
             $slot,
             in_array($expose, ['1', 'true', 'yes', 'sim'], true),
@@ -620,7 +622,7 @@ final class InstallCommand extends Command
             $gid,
             filter_var(getenv('TWS_KIT_VITE_POLLING'), FILTER_VALIDATE_BOOLEAN),
             static fn (): string => bin2hex(random_bytes(16)),
-        );
+        ), ...CreatedProject::identityEnvironment($name)];
     }
 
     /**
@@ -677,7 +679,11 @@ final class InstallCommand extends Command
         $project = new CreatedProject(dirname($this->laravel->environmentFilePath()));
         $database = $values['DB_DATABASE'];
 
-        $project->environmentExample(array_intersect_key($values, array_flip(['APP_URL', 'PLATFORM_OFFICIAL_URL', 'DB_DATABASE', 'SESSION_COOKIE'])));
+        $project->environmentExample(array_intersect_key($values, array_flip([
+            'APP_URL', 'PLATFORM_OFFICIAL_URL', 'DB_DATABASE', 'SESSION_COOKIE',
+            ...array_keys(CreatedProject::identityEnvironment($values['COMPOSE_PROJECT_NAME'])),
+        ])));
+        $project->devContainerName($values['COMPOSE_PROJECT_NAME']);
         $project->testDatabase($database);
         $project->productionDatabase($database);
 

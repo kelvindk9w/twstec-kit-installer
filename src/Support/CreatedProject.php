@@ -13,6 +13,10 @@ use RuntimeException;
  *
  * - `.env.example`: o endereço, o banco e o cookie de sessão do projeto (as
  *   linhas que já existem; nenhum segredo — as senhas ficam só no `.env`);
+ * - `.env` e `.env.example`: a identidade do projeto no lugar da do kit
+ *   (identityEnvironment: APP_NAME e PLATFORM_NAME com o nome do projeto,
+ *   versão 0.1.0, sem o repositório e a empresa do kit);
+ * - `.devcontainer/devcontainer.json`: o nome do projeto no Dev Container;
  * - `phpunit.pgsql.xml`: o banco da suíte é `<banco>_test` — o MESMO que o
  *   serviço db-init do compose.yaml cria (`${DB_DATABASE}_test`);
  * - `docker-compose.prod.yml`: o nome padrão do banco de produção;
@@ -57,6 +61,13 @@ final class CreatedProject
 
     public const DEPENDABOT_CONFIG = '.github/dependabot.yml';
 
+    public const DEV_CONTAINER = '.devcontainer/devcontainer.json';
+
+    /**
+     * A versão com que o PRODUTO começa (PLATFORM_VERSION) — não a do kit.
+     */
+    public const INITIAL_VERSION = '0.1.0';
+
     public function __construct(private readonly string $root) {}
 
     /**
@@ -74,6 +85,35 @@ final class CreatedProject
     public static function validLicense(string $license): bool
     {
         return preg_match('/^[A-Za-z0-9.+-]+(?: (?:OR|AND) [A-Za-z0-9.+-]+)*$/', $license) === 1;
+    }
+
+    /**
+     * A identidade do projeto no .env: o nome dele (APP_NAME, que também
+     * nomeia cache, Redis, Horizon e backup, e PLATFORM_NAME, o das telas e
+     * e-mails), a versão inicial do produto, e vazios o repositório e a
+     * empresa do kit (a empresa vazia cai no nome da plataforma).
+     *
+     * @return array<string, string>
+     */
+    public static function identityEnvironment(string $name): array
+    {
+        return [
+            'APP_NAME' => $name,
+            'PLATFORM_NAME' => $name,
+            'PLATFORM_VERSION' => self::INITIAL_VERSION,
+            'PLATFORM_REPO_URL' => '',
+            'PLATFORM_COMPANY_NAME' => '',
+            'PLATFORM_COMPANY_URL' => '',
+        ];
+    }
+
+    /**
+     * O nome do projeto no Dev Container (o VS Code o mostra na barra de
+     * status e na lista de containers).
+     */
+    public function devContainerName(string $name): bool
+    {
+        return $this->rewrite(self::DEV_CONTAINER, '/("name"\s*:\s*)"[^"\n]*"/', '${1}'.json_encode($name, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
     }
 
     /**
