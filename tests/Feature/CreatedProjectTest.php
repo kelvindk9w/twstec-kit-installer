@@ -46,7 +46,7 @@ beforeEach(function (): void {
         'PLATFORM_REPO_URL=https://github.com/kelvindk9w/tws-laravel-starter-kit',
         'PLATFORM_COMPANY_NAME=TWS',
         'PLATFORM_COMPANY_URL=https://example.com',
-        'PLATFORM_VERSION=2.0.0-beta.18',
+        'PLATFORM_VERSION=2.0.0-beta.19',
         'PLATFORM_OFFICIAL_URL=http://127.0.0.1:8181',
         '# COMPOSE_PROJECT_NAME=',
         'DB_DATABASE=tws_starter_react',

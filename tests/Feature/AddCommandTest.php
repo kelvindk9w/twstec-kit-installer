@@ -42,9 +42,9 @@ it('mostra o que está instalado e o que falta, e acrescenta contas — com a au
         ['require', ['twstec/kit-foundation:^2.0@beta', 'twstec/kit-auth:^2.0@beta', 'twstec/kit-accounts:^2.0@beta'], false],
     ])
         ->and($this->runs->getArrayCopy())->toBe([
+            // Sem vendor:publish: a configuração padrão fica no pacote, sem
+            // cópia no aplicativo (docs/personalizacao.md).
             'optimize:clear',
-            'vendor:publish --tag=auth-config',
-            'vendor:publish --tag=accounts-config',
             'migrate --force',
         ])
         // Contas novas: o pepper dedicado; nenhuma chave foi emitida antes,
@@ -71,7 +71,7 @@ it('RECUSA webhooks sem contas, com a explicação e o comando certo — sem mex
     Process::assertNothingRan();
 });
 
-it('webhooks num aplicativo que já tem contas: vale, com a configuração publicada e as migrations', function (): void {
+it('webhooks num aplicativo que já tem contas: vale, com as migrations e sem cópia da configuração', function (): void {
     $this->project(['accounts']);
 
     $this->artisan('tws:add', ['modules' => ['webhooks']])->assertSuccessful();
@@ -81,7 +81,6 @@ it('webhooks num aplicativo que já tem contas: vale, com a configuração publi
     expect($this->composer->calls)->toBe([['require', ['twstec/kit-foundation:^2.0@beta', 'twstec/kit-auth:^2.0@beta', 'twstec/kit-webhooks:^2.0@beta'], false]])
         ->and($this->runs->getArrayCopy())->toBe([
             'optimize:clear',
-            'vendor:publish --tag=webhooks-config',
             'migrate --force',
         ]);
 });

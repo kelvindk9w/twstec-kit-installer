@@ -41,12 +41,15 @@ use function Laravel\Prompts\multiselect;
  * APLICA: `composer require` dos escolhidos (e do foundation/auth como
  * requisito DIRETO do projeto, se hoje só vêm por dependência de outro
  * pacote — senão um `--no-dev` os levaria embora), com a restrição de versão
- * do kit no composer.json; `optimize:clear`; a configuração publicada de cada
- * módulo (`vendor:publish --tag=<módulo>-config`, sem sobrescrever); o .env
+ * do kit no composer.json; `optimize:clear`; o .env
  * (APP_KEY, e o pepper dedicado das chaves de API com contas); `migrate`. As
  * proteções vêm ligadas pelos próprios pacotes (descoberta automática do
  * Laravel). O que só o aplicativo pode fazer (o model de usuário, o painel do
  * Filament, as colunas próprias) sai no resumo, módulo a módulo.
+ *
+ * NÃO publica a configuração dos módulos: o padrão mora no pacote e o
+ * aplicativo só tem config/<arquivo>.php se mudar algo (cópia completa
+ * impediria as atualizações de chegar; ver docs/personalizacao.md).
  *
  * RECUSA produção sem `--force`, como o tws:install.
  */
@@ -164,10 +167,6 @@ final class AddCommand extends Command
         }
 
         $this->components->task(__('installer.steps.clear_caches'), fn (): bool => $this->artisan(['optimize:clear']));
-
-        foreach ($added as $module) {
-            $this->artisan(['vendor:publish', "--tag={$module}-config"]);
-        }
 
         $this->prepareEnvironment($added);
 

@@ -137,11 +137,13 @@ Mostra os módulos do kit instalados e os disponíveis; instala os escolhidos:
 - `composer require` dos escolhidos (e do foundation/auth como requisito
   **direto** do projeto, se hoje só vêm por dependência), com a restrição de
   versão do kit que está no `composer.json`;
-- `optimize:clear`, `vendor:publish --tag=<módulo>-config` (sem
-  sobrescrever), `APP_KEY` se faltar, o pepper das chaves de API com contas,
+- `optimize:clear`, `APP_KEY` se faltar, o pepper das chaves de API com contas,
   a chave dos uploads confidenciais com uploads, `migrate`;
 - o resumo diz o que só o aplicativo faz (model de usuário, foto, painel do
   Filament, primeiro admin).
+- **não** publica a configuração dos módulos: o padrão fica no pacote e o
+  aplicativo só cria `config/<arquivo>.php` se mudar algo
+  ([personalização](../../docs/personalizacao.md)).
 
 | Opção | O que faz |
 | --- | --- |
