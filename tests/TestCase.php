@@ -10,11 +10,13 @@ use Spatie\Backup\BackupServiceProvider;
 use Twstec\Kit\Foundation\FoundationServiceProvider;
 use Twstec\Kit\Installer\Contracts\Composer;
 use Twstec\Kit\Installer\Contracts\Inventory;
+use Twstec\Kit\Installer\Contracts\StarterReference;
 use Twstec\Kit\Installer\Dev\Host;
 use Twstec\Kit\Installer\InstallerServiceProvider;
 use Twstec\Kit\Installer\Tests\Fixtures\FakeComposer;
 use Twstec\Kit\Installer\Tests\Fixtures\FakeHost;
 use Twstec\Kit\Installer\Tests\Fixtures\FakeInventory;
+use Twstec\Kit\Installer\Tests\Fixtures\FakeStarterReference;
 
 /**
  * Aplicação Laravel LIMPA (Testbench) com o foundation e o instalador — e um
@@ -40,6 +42,8 @@ abstract class TestCase extends Testbench
     protected FakeComposer $composer;
 
     protected FakeHost $host;
+
+    protected FakeStarterReference $references;
 
     protected function getPackageProviders($app): array
     {
@@ -79,6 +83,11 @@ abstract class TestCase extends Testbench
         // livres), salvo o que o teste acrescentar.
         $this->host = new FakeHost;
         $app->instance(Host::class, $this->host);
+
+        // O starter de referência do tws:upgrade: uma pasta do teste, numa
+        // versão publicada fixa (nada de Composer de verdade).
+        $this->references = new FakeStarterReference;
+        $app->instance(StarterReference::class, $this->references);
     }
 
     protected function tearDown(): void

@@ -12,6 +12,7 @@ use Twstec\Kit\Foundation\Kit;
 use Twstec\Kit\Installer\Console\Concerns\InteractsWithProject;
 use Twstec\Kit\Installer\Contracts\Composer;
 use Twstec\Kit\Installer\Contracts\Inventory;
+use Twstec\Kit\Installer\Contracts\StarterReference;
 use Twstec\Kit\Installer\Dev\DevEnvironment;
 use Twstec\Kit\Installer\Dev\Host;
 use Twstec\Kit\Installer\Support\CreatedProject;
@@ -19,6 +20,7 @@ use Twstec\Kit\Installer\Support\EnvironmentFile;
 use Twstec\Kit\Installer\Support\InstallPlan;
 use Twstec\Kit\Installer\Support\KitConstraint;
 use Twstec\Kit\Installer\Support\UploadsEncryptionKey;
+use Twstec\Kit\Installer\Upgrade\Manifest;
 
 use function Laravel\Prompts\confirm;
 use function Laravel\Prompts\multiselect;
@@ -159,6 +161,14 @@ final class InstallCommand extends Command
             return self::FAILURE;
         }
 
+        // A base da conferência futura (tws:upgrade): os arquivos do starter
+        // como chegaram, ANTES de o instalador adaptá-los ao projeto — só na
+        // criação (o Docker de desenvolvimento configurado agora) e se ainda
+        // não houver manifesto.
+        $starterFiles = is_array($dev) && Manifest::read($this->projectPath('')) === null
+            ? ['starter' => $this->starterName(), 'files' => Manifest::snapshot($this->projectPath(''))]
+            : null;
+
         $plan = $this->choose($inventory->optionalModules(), $inventory->demoInstalled());
 
         if ($plan === null) {
@@ -181,6 +191,10 @@ final class InstallCommand extends Command
 
         if (is_array($dev)) {
             $this->writeDevEnvironment($dev);
+
+            if ($starterFiles !== null) {
+                $this->recordManifest($starterFiles);
+            }
             // Até o primeiro `docker compose up -d`, nada mostra este projeto
             // a quem criar o próximo: o nome e o número ficam reservados.
             $host->reserve($dev['COMPOSE_PROJECT_NAME'], (int) $dev['DEV_SLOT']);
@@ -706,6 +720,35 @@ final class InstallCommand extends Command
         if ($project->dependabot()) {
             $this->report[__('installer.dev.dependabot_step')] = __('installer.dev.dependabot', ['file' => CreatedProject::DEPENDABOT_CONFIG]);
         }
+    }
+
+    /**
+     * A interface do starter, pelo composer.json COMO CHEGOU (antes de o
+     * instalador trocar o nome pelo do projeto).
+     */
+    private function starterName(): string
+    {
+        $composer = json_decode((string) @file_get_contents($this->projectPath('composer.json')), true);
+        $name = is_array($composer) && is_string($composer['name'] ?? null) ? $composer['name'] : '';
+
+        return match (true) {
+            $name === 'twstec/starter-react', is_file($this->projectPath('resources/js/app.tsx')) => 'react',
+            default => 'livewire',
+        };
+    }
+
+    /**
+     * O manifesto da criação (.tws/manifest.json): a base do tws:upgrade.
+     *
+     * @param  array{starter: string, files: array<string, string>}  $starter  o retrato de antes da adaptação
+     */
+    private function recordManifest(array $starter): void
+    {
+        $root = $this->projectPath('');
+        $version = $this->laravel->make(StarterReference::class)->version();
+
+        Manifest::created($version ?? 'local', $starter['starter'], $root, $starter['files'])->write($root);
+        $this->report[__('installer.dev.manifest_step')] = __('installer.dev.manifest', ['file' => Manifest::PATH]);
     }
 
     private function migrate(): bool

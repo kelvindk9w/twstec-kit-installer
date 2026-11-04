@@ -2,8 +2,11 @@
 
 declare(strict_types=1);
 
+use Illuminate\Filesystem\Filesystem;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Process;
 use Twstec\Kit\Installer\Support\CreatedProject;
+use Twstec\Kit\Installer\Upgrade\Manifest;
 
 // =============================================================================
 // O PROJETO CRIADO é DO PROJETO: na criação (o tws:install com o
@@ -46,7 +49,7 @@ beforeEach(function (): void {
         'PLATFORM_REPO_URL=https://github.com/kelvindk9w/tws-laravel-starter-kit',
         'PLATFORM_COMPANY_NAME=TWS',
         'PLATFORM_COMPANY_URL=https://example.com',
-        'PLATFORM_VERSION=2.0.0-beta.19',
+        'PLATFORM_VERSION=2.0.0-beta.20',
         'PLATFORM_OFFICIAL_URL=http://127.0.0.1:8181',
         '# COMPOSE_PROJECT_NAME=',
         'DB_DATABASE=tws_starter_react',
@@ -241,6 +244,54 @@ it('vendor ou licença inválidos: RECUSADOS antes de mexer em qualquer coisa', 
     ['TWS_KIT_LICENSE', 'MIT; rm -rf', 'Invalid license in TWS_KIT_LICENSE: MIT; rm -rf'],
 ]);
 
+it('grava a base da conferência (.tws/manifest.json): o starter como chegou e o projeto como ficou — e o tws:upgrade sai 0', function (): void {
+    putenv('TWS_KIT_NAME=loja');
+    // O starter publicado, como chegou (a referência da mesma versão).
+    $starter = sys_get_temp_dir().'/kit-starter-'.bin2hex(random_bytes(6));
+    (new Filesystem)->copyDirectory($this->project, $starter);
+
+    try {
+        $this->artisan('tws:install', ['--no-interaction' => true])->assertSuccessful();
+
+        $manifest = Manifest::read($this->project);
+
+        expect($manifest?->kit)->toBe('2.0.0-beta.20')
+            ->and($manifest?->starter)->toBe('react')
+            // Adaptado na criação: a base guarda os dois lados.
+            ->and($manifest?->files['.env.example'])->toBe([
+                'reference' => hash_file('sha256', $starter.'/.env.example'),
+                'project' => hash_file('sha256', $this->project.'/.env.example'),
+            ])
+            ->and($manifest?->files['.env.example']['reference'])->not->toBe($manifest?->files['.env.example']['project'])
+            // Mudado de lugar: o CI base, pelo caminho no projeto.
+            ->and($manifest?->files['.github/workflows/ci.yml'])->toBe([
+                'reference' => hash('sha256', "name: CI\n"),
+                'project' => hash('sha256', "name: CI\n"),
+            ])
+            ->and($manifest?->files)->not->toHaveKey('docker/dev/ci.yml')
+            // Fora da conta: o composer.json (do projeto desde a criação), o
+            // lock, a licença do kit e o .env.
+            ->and($manifest?->files)->not->toHaveKeys(['composer.json', 'composer.lock', 'LICENSE', '.env']);
+
+        // Recém-criado, nada a conferir — o que o instalador adaptou não
+        // aparece como diferença.
+        expect(Artisan::call('tws:upgrade', ['--check' => true, '--from' => $starter]))->toBe(0);
+    } finally {
+        (new Filesystem)->deleteDirectory($starter);
+    }
+});
+
+it('rodar o instalador de novo não troca a base gravada na criação', function (): void {
+    putenv('TWS_KIT_NAME=loja');
+    $this->artisan('tws:install', ['--no-interaction' => true])->assertSuccessful();
+    $first = ($this->read)(Manifest::PATH);
+    file_put_contents($this->project.'/compose.yaml', "services: {meu: {}}\n");
+
+    $this->artisan('tws:install', ['--no-interaction' => true])->assertSuccessful();
+
+    expect(($this->read)(Manifest::PATH))->toBe($first);
+});
+
 it('no monorepo (sem o compose.yaml de desenvolvimento), nada do projeto criado acontece', function (): void {
     unlink($this->project.'/compose.yaml');
     $before = ($this->read)('composer.json');
@@ -253,7 +304,8 @@ it('no monorepo (sem o compose.yaml de desenvolvimento), nada do projeto criado 
         ->and(($this->read)('phpunit.pgsql.xml'))->toContain('tws_starter_react_test')
         ->and(file_exists($this->project.'/docker/dev/ci.yml'))->toBeTrue()
         ->and(file_exists($this->project.'/docker/dev/dependabot.yml'))->toBeTrue()
-        ->and(file_exists($this->project.'/.github/dependabot.yml'))->toBeFalse();
+        ->and(file_exists($this->project.'/.github/dependabot.yml'))->toBeFalse()
+        ->and(file_exists($this->project.'/'.Manifest::PATH))->toBeFalse();
 });
 
 it('o content-hash é o mesmo que o Composer calcula', function (): void {

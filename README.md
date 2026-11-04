@@ -16,7 +16,11 @@ O instalador do **TWS Laravel Starter Kit**, com dois comandos:
   ele aplica. `twstec/kit-foundation` e `twstec/kit-auth` vêm sempre;
 - `php artisan tws:add` — num **aplicativo Laravel que já existe**: mostra os
   pacotes do kit que faltam e instala os escolhidos (ver
-  [abaixo](#acrescentar-pacotes-a-um-aplicativo-que-já-existe-twsadd)).
+  [abaixo](#acrescentar-pacotes-a-um-aplicativo-que-já-existe-twsadd));
+- `php artisan tws:upgrade --check` — depois de atualizar o kit, **lista os
+  arquivos de starter do projeto** (Docker, CI, `.env*`, scripts, Vite,
+  testes) que a versão nova mudou, sem aplicar nada (ver
+  [abaixo](#conferir-os-arquivos-de-starter-twsupgrade)).
 
 - **Requisitos:** PHP 8.4+, Laravel 13, `twstec/kit-foundation` 2.x.
 - **Licença:** MIT.
@@ -149,6 +153,23 @@ Mostra os módulos do kit instalados e os disponíveis; instala os escolhidos:
 | --- | --- |
 | `--force` | Permite rodar com `APP_ENV=production` (sem ela, recusa) |
 | `--graceful` | Banco inacessível não reprova: as migrations ficam para depois |
+
+## Conferir os arquivos de starter (`tws:upgrade`)
+
+```bash
+php artisan tws:upgrade --check            # só lista (0 = em dia, 1 = conferir, 2 = sem referência)
+php artisan tws:upgrade --check --diff     # com a diferença de cada arquivo (git)
+php artisan tws:upgrade --check --from=<pasta com o starter publicado>   # sem rede
+php artisan tws:upgrade --record           # grava a base nova em .tws/manifest.json
+```
+
+A referência é o starter publicado na versão do `twstec/kit-foundation`
+instalada, baixado pelo Composer (`create-project --no-install --no-scripts
+--no-plugins`) e guardado em `storage/framework/cache/tws-starters/`. A base
+(`.tws/manifest.json`) é gravada pelo `tws:install` na criação e separa
+"desatualizado — pode substituir" de "personalizado — comparar à mão"; o que
+o kit não mudou não aparece. Detalhes em
+[docs/personalizacao.md](https://github.com/kelvindk9w/tws-laravel-starter-kit/blob/desenvolvimento/docs/personalizacao.md).
 
 ## Testes
 
