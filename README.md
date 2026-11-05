@@ -11,9 +11,11 @@ O instalador do **TWS Laravel Starter Kit**, com dois comandos:
 
 - `php artisan tws:install` — num projeto criado de um starter: você escolhe
   os módulos opcionais do kit — **contas e API** (`twstec/kit-accounts`),
-  **uploads** (`twstec/kit-uploads`) e o **painel `/admin`**
-  (`twstec/kit-admin`) — e se a **demonstração** (`twstec/kit-demo`) fica;
-  ele aplica. `twstec/kit-foundation` e `twstec/kit-auth` vêm sempre;
+  **uploads** (`twstec/kit-uploads`), o **painel `/admin`**
+  (`twstec/kit-admin`) e os **webhooks de saída** (`twstec/kit-webhooks`) —
+  e se a **demonstração** (`twstec/kit-demo`) fica; na criação do projeto,
+  também o banco (PostgreSQL ou SQLite) e se usa Redis; ele aplica.
+  `twstec/kit-foundation` e `twstec/kit-auth` vêm sempre;
 - `php artisan tws:add` — num **aplicativo Laravel que já existe**: mostra os
   pacotes do kit que faltam e instala os escolhidos (ver
   [abaixo](#acrescentar-pacotes-a-um-aplicativo-que-já-existe-twsadd));
@@ -61,9 +63,13 @@ php artisan tws:install --no-interaction --with=accounts,uploads --without=admin
 | `--no-demo` | Remove a demonstração |
 | `--force` | Permite rodar com `APP_ENV=production` (sem ela, recusa) |
 | `--graceful` | Banco inacessível não reprova: as migrations ficam para depois (é o que o `post-create-project-cmd` do starter usa) |
+| `--database=pgsql\|sqlite` | Só na criação: o banco do projeto — PostgreSQL (o padrão) ou SQLite (modo protótipo) |
+| `--redis` / `--no-redis` | Só na criação: sessão, cache e fila no Redis, com o Horizon (o padrão), ou no banco, sem Redis nem Horizon |
 
 **Pelo ambiente:** sem a opção, `TWS_KIT_WITH` e `TWS_KIT_WITHOUT` valem como
-`--with` e `--without` (a opção vence) e também desligam as perguntas. É por
+`--with` e `--without` (a opção vence) e também desligam as perguntas;
+`TWS_KIT_DATABASE` (`pgsql` ou `sqlite`) e `TWS_KIT_REDIS` (`1` ou `0`) valem
+como `--database` e `--redis`/`--no-redis`. É por
 onde a escolha chega ao `post-create-project-cmd` do starter, porque o
 Composer não repassa opções ao script:
 `TWS_KIT_WITHOUT=admin composer create-project "twstec/starter-livewire:^2.0@beta" app`.
@@ -77,11 +83,18 @@ projeto), `optimize:clear`, o `.env` (do `.env.example` se faltar), a
 `APP_KEY` e o pepper dedicado das chaves de API quando faltam, a chave dos
 uploads confidenciais (`UPLOADS_ENCRYPTION_KEY`, com o módulo de uploads; a
 que já existe nunca é trocada e o valor nunca aparece na tela), e `migrate`.
+Na criação do projeto (com o Docker de desenvolvimento, abaixo), sem Redis o
+`composer remove laravel/horizon` vem logo depois dos módulos; depois do
+`.env`, os arquivos do projeto são adaptados ao banco e ao Redis escolhidos
+e o manifesto `.tws/manifest.json` (a base do `tws:upgrade`) é gravado; e as
+migrations ficam para o primeiro `docker compose up -d`. Num projeto que já
+existe, `--database`/`--no-redis` são ignorados, com aviso.
 Idempotente. Não apaga arquivo do aplicativo — o starter esconde sozinho o que
 é de um módulo ausente (`Kit::has`).
 
-As regras: `uploads` exige `accounts`; a demonstração exige todos os módulos
-opcionais (tirar um deles exige `--no-demo`); `foundation` e `auth` não saem.
+As regras: `uploads` e `webhooks` exigem `accounts`; a demonstração exige
+`accounts`, `uploads` e `admin` (tirar um deles exige `--no-demo`);
+`foundation` e `auth` não saem.
 
 **Extensões do PHP.** O `composer require`/`remove` do instalador herda o que
 a pessoa pediu para ignorar (`COMPOSER_IGNORE_PLATFORM_REQ(S)`), e no Windows
@@ -161,12 +174,15 @@ php artisan tws:upgrade --check            # só lista (0 = em dia, 1 = conferir
 php artisan tws:upgrade --check --diff     # com a diferença de cada arquivo (git)
 php artisan tws:upgrade --check --from=<pasta com o starter publicado>   # sem rede
 php artisan tws:upgrade --record           # grava a base nova em .tws/manifest.json
+php artisan tws:upgrade --check --starter=react   # a interface, quando não há manifesto e o comando não a deduz
 ```
 
 A referência é o starter publicado na versão do `twstec/kit-foundation`
 instalada, baixado pelo Composer (`create-project --no-install --no-scripts
 --no-plugins`) e guardado em `storage/framework/cache/tws-starters/`. A base
-(`.tws/manifest.json`) é gravada pelo `tws:install` na criação e separa
+(`.tws/manifest.json`: a versão do kit, a interface e, por arquivo de
+starter, o hash SHA-256 do arquivo do starter e o do projeto naquele
+momento) é gravada pelo `tws:install` na criação e separa
 "desatualizado — pode substituir" de "personalizado — comparar à mão"; o que
 o kit não mudou não aparece. Detalhes em
 [docs/personalizacao.md](https://github.com/kelvindk9w/tws-laravel-starter-kit/blob/desenvolvimento/docs/personalizacao.md).
