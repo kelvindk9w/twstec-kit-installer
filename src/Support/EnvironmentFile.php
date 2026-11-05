@@ -115,6 +115,112 @@ final class EnvironmentFile
     }
 
     /**
+     * Tira as variáveis: a linha ativa e a de exemplo comentada (`# CHAVE=`)
+     * de cada uma. O resto do arquivo fica como está.
+     */
+    public function remove(string ...$keys): void
+    {
+        if (! $this->exists() || $keys === []) {
+            return;
+        }
+
+        $pattern = '/^\s*#?\s*(?:'.implode('|', array_map(static fn (string $key): string => preg_quote($key, '/'), $keys)).')\s*=/';
+        $lines = array_values(array_filter($this->lines(), static fn (string $line): bool => preg_match($pattern, $line) !== 1));
+
+        $this->write($lines);
+    }
+
+    /**
+     * Tira as variáveis cujos nomes começam com os prefixos dados (ex.:
+     * `REDIS_`), ativas ou de exemplo comentadas.
+     */
+    public function removePrefixed(string ...$prefixes): void
+    {
+        if (! $this->exists() || $prefixes === []) {
+            return;
+        }
+
+        $pattern = '/^\s*#?\s*(?:'.implode('|', array_map(static fn (string $prefix): string => preg_quote($prefix, '/'), $prefixes)).')[A-Z0-9_]*\s*=/';
+        $lines = array_values(array_filter($this->lines(), static fn (string $line): bool => preg_match($pattern, $line) !== 1));
+
+        $this->write($lines);
+    }
+
+    /**
+     * Troca (ou, com null, tira) as linhas que começam exatamente com o
+     * texto dado — para títulos e comentários conhecidos.
+     */
+    public function replaceLine(string $startsWith, ?string $replacement): void
+    {
+        if (! $this->exists()) {
+            return;
+        }
+
+        $lines = [];
+
+        foreach ($this->lines() as $line) {
+            if (! str_starts_with($line, $startsWith)) {
+                $lines[] = $line;
+            } elseif ($replacement !== null) {
+                $lines[] = $replacement;
+            }
+        }
+
+        $this->write($lines);
+    }
+
+    /**
+     * Troca a SEÇÃO inteira cujo título (`# --- <título> ---`) começa com
+     * $title — do título até a linha antes do próximo título — pelas linhas
+     * dadas (com o título novo, se for o caso). Sem as linhas, a seção sai.
+     * Devolve se achou a seção.
+     *
+     * @param  list<string>  $replacement
+     */
+    public function replaceSection(string $title, array $replacement): bool
+    {
+        $lines = $this->lines();
+        $start = null;
+
+        foreach ($lines as $i => $line) {
+            if (str_starts_with($line, '# --- '.$title)) {
+                $start = $i;
+
+                break;
+            }
+        }
+
+        if ($start === null) {
+            return false;
+        }
+
+        $end = count($lines);
+
+        for ($i = $start + 1; $i < count($lines); $i++) {
+            if (str_starts_with($lines[$i], '# --- ')) {
+                $end = $i;
+
+                break;
+            }
+        }
+
+        // A linha em branco que separa da próxima seção fica.
+        $length = $end - $start;
+
+        if ($replacement !== [] && $length > 0 && $end < count($lines) && $lines[$end - 1] === '') {
+            $replacement[] = '';
+        } elseif ($replacement === [] && $end === count($lines) && $start > 0 && $lines[$start - 1] === '') {
+            $start--;
+            $length++;
+        }
+
+        array_splice($lines, $start, $length, $replacement);
+        $this->write($lines);
+
+        return true;
+    }
+
+    /**
      * @return list<string>
      */
     private function lines(): array

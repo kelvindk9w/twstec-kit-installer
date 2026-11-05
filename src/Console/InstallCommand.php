@@ -19,11 +19,14 @@ use Twstec\Kit\Installer\Support\CreatedProject;
 use Twstec\Kit\Installer\Support\EnvironmentFile;
 use Twstec\Kit\Installer\Support\InstallPlan;
 use Twstec\Kit\Installer\Support\KitConstraint;
+use Twstec\Kit\Installer\Support\ProjectStack;
+use Twstec\Kit\Installer\Support\StackFiles;
 use Twstec\Kit\Installer\Support\UploadsEncryptionKey;
 use Twstec\Kit\Installer\Upgrade\Manifest;
 
 use function Laravel\Prompts\confirm;
 use function Laravel\Prompts\multiselect;
+use function Laravel\Prompts\select;
 
 /**
  * `php artisan tws:install` — a pessoa escolhe os módulos OPCIONAIS do kit
@@ -85,6 +88,15 @@ use function Laravel\Prompts\multiselect;
  * Vendor ou licença inválidos param ANTES de qualquer mudança, como o nome e
  * o número.
  *
+ * BANCO E REDIS (Support\ProjectStack, aplicados por Support\StackFiles), só
+ * na criação: PostgreSQL (padrão) ou SQLite ("modo protótipo"), e Redis sim
+ * (padrão) ou não — `--database=sqlite`, `--no-redis`, ou TWS_KIT_DATABASE e
+ * TWS_KIT_REDIS (o comando único passa assim o que o menu perguntou); no
+ * terminal, sem opção, pergunta. Sem Redis, o `composer remove
+ * laravel/horizon`. Valor inválido para ANTES de qualquer mudança; num
+ * projeto que já existe, a escolha é ignorada com aviso (trocar depois é à
+ * mão — ver docs/instalacao.md).
+ *
  * IDEMPOTENTE: rodar de novo com a mesma escolha não muda pacote nenhum e não
  * regera chave que já existe. RECUSA produção sem `--force`: tirar pacote e
  * mexer no .env não é coisa de servidor.
@@ -105,6 +117,13 @@ final class InstallCommand extends Command
         'with' => 'TWS_KIT_WITH',
         'without' => 'TWS_KIT_WITHOUT',
     ];
+
+    /**
+     * As variáveis de ambiente da escolha de banco e de Redis.
+     */
+    public const DATABASE_ENVIRONMENT = 'TWS_KIT_DATABASE';
+
+    public const REDIS_ENVIRONMENT = 'TWS_KIT_REDIS';
 
     protected $name = 'tws:install';
 
@@ -140,6 +159,8 @@ final class InstallCommand extends Command
             new InputOption('no-demo', null, InputOption::VALUE_NONE, __('installer.options.no_demo')),
             new InputOption('force', null, InputOption::VALUE_NONE, __('installer.options.force')),
             new InputOption('graceful', null, InputOption::VALUE_NONE, __('installer.options.graceful')),
+            new InputOption('database', null, InputOption::VALUE_REQUIRED, __('installer.options.database')),
+            new InputOption('redis', null, InputOption::VALUE_NEGATABLE, __('installer.options.redis')),
         ];
     }
 
@@ -158,6 +179,15 @@ final class InstallCommand extends Command
         $dev = $this->devEnvironment($host);
 
         if ($dev === false) {
+            return self::FAILURE;
+        }
+
+        // O banco e o Redis: só na criação (com o Docker de desenvolvimento
+        // configurado agora). Valor inválido para aqui, antes de qualquer
+        // mudança.
+        $stack = $this->stack(is_array($dev));
+
+        if ($stack === null) {
             return self::FAILURE;
         }
 
@@ -187,10 +217,15 @@ final class InstallCommand extends Command
             return self::FAILURE;
         }
 
+        if (is_array($dev) && ! $stack->redis && ! $this->removeHorizon($composer)) {
+            return self::FAILURE;
+        }
+
         $this->prepareEnvironment($plan);
 
         if (is_array($dev)) {
             $this->writeDevEnvironment($dev);
+            $this->applyStack($stack);
 
             if ($starterFiles !== null) {
                 $this->recordManifest($starterFiles);
@@ -211,7 +246,7 @@ final class InstallCommand extends Command
             $migrated = $this->migrate();
         }
 
-        $this->summary($plan, is_array($dev) ? $dev : null);
+        $this->summary($plan, is_array($dev) ? $dev : null, $stack);
 
         return $migrated ? self::SUCCESS : self::FAILURE;
     }
@@ -256,6 +291,104 @@ final class InstallCommand extends Command
         }
 
         return $plan;
+    }
+
+    /**
+     * O banco e o Redis do projeto criado: pelas opções, pelas variáveis de
+     * ambiente ou pelas perguntas (no terminal, sem opção). Null (com o erro
+     * na tela) quando um valor não vale. Fora da criação, a escolha não se
+     * aplica: com valor diferente do padrão, avisa e segue com o padrão.
+     */
+    private function stack(bool $creating): ?ProjectStack
+    {
+        $rawDatabase = $this->option('database') ?? (getenv(self::DATABASE_ENVIRONMENT) ?: null);
+        $database = null;
+
+        if ($rawDatabase !== null && trim((string) $rawDatabase) !== '') {
+            $database = ProjectStack::database((string) $rawDatabase);
+
+            if ($database === null) {
+                $this->components->error(__('installer.stack.database_invalid', ['value' => (string) $rawDatabase, 'databases' => implode(', ', ProjectStack::DATABASES)]));
+
+                return null;
+            }
+        }
+
+        $redis = $this->option('redis');
+
+        if ($redis === null) {
+            $rawRedis = getenv(self::REDIS_ENVIRONMENT);
+
+            if (is_string($rawRedis) && trim($rawRedis) !== '') {
+                $redis = ProjectStack::flag($rawRedis);
+
+                if ($redis === null) {
+                    $this->components->error(__('installer.stack.redis_invalid', ['value' => $rawRedis]));
+
+                    return null;
+                }
+            }
+        }
+
+        if (! $creating) {
+            if (($database !== null && $database !== ProjectStack::POSTGRES) || $redis === false) {
+                $this->components->warn(__('installer.stack.only_on_create'));
+            }
+
+            return new ProjectStack;
+        }
+
+        if ($this->asks()) {
+            $database ??= (string) select(
+                label: __('installer.stack.database_label'),
+                options: [
+                    ProjectStack::POSTGRES => __('installer.stack.database_pgsql'),
+                    ProjectStack::SQLITE => __('installer.stack.database_sqlite'),
+                ],
+                default: ProjectStack::POSTGRES,
+                hint: __('installer.stack.database_hint'),
+            );
+            $redis ??= confirm(__('installer.stack.redis_label'), true, hint: __('installer.stack.redis_hint'));
+        }
+
+        return new ProjectStack($database ?? ProjectStack::POSTGRES, (bool) ($redis ?? true));
+    }
+
+    /**
+     * Sem Redis, o Horizon sai do composer.json (se estiver lá).
+     */
+    private function removeHorizon(Composer $composer): bool
+    {
+        $composerJson = json_decode((string) @file_get_contents($this->projectPath('composer.json')), true);
+
+        if (! is_array($composerJson) || ! isset($composerJson['require'][StackFiles::HORIZON_PACKAGE])) {
+            return true;
+        }
+
+        // O código do Horizon sai antes: o Composer sobe a aplicação no fim
+        // (package:discover), e o provider dele ainda estaria registrado.
+        (new StackFiles(rtrim($this->projectPath(''), '/')))->removeHorizonFiles();
+
+        $this->components->info(__('installer.steps.composer_remove', ['packages' => StackFiles::HORIZON_PACKAGE]));
+
+        if (! $composer->remove([StackFiles::HORIZON_PACKAGE], false, $this->composerOutput())) {
+            $this->composerFailed();
+
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Os arquivos do projeto com o banco e o Redis escolhidos.
+     */
+    private function applyStack(ProjectStack $stack): void
+    {
+        (new StackFiles(rtrim($this->projectPath(''), '/')))->apply($stack);
+
+        $this->report[__('installer.stack.database_step')] = __($stack->sqlite() ? 'installer.stack.database_sqlite_done' : 'installer.stack.database_pgsql_done');
+        $this->report[__('installer.stack.redis_step')] = __($stack->redis ? 'installer.stack.redis_done' : 'installer.stack.no_redis_done');
     }
 
     /**
@@ -773,7 +906,7 @@ final class InstallCommand extends Command
     /**
      * @param  array<string, string>|null  $dev  o Docker de desenvolvimento gravado agora
      */
-    private function summary(InstallPlan $plan, ?array $dev = null): void
+    private function summary(InstallPlan $plan, ?array $dev = null, ?ProjectStack $stack = null): void
     {
         $this->newLine();
         $this->components->info(__('installer.summary.heading'));
@@ -819,6 +952,11 @@ final class InstallCommand extends Command
         // comando único (twstec/kit) avisa no resumo dele.
         if ($this->windowsWithoutHorizon() && getenv('TWS_KIT_FROM_KIT') !== '1') {
             $next[] = __('installer.extensions.windows_horizon');
+        }
+
+        // SQLite: o aviso do modo protótipo, também no fim (o .env repete).
+        if ($dev !== null && $stack?->sqlite()) {
+            $next[] = __('installer.stack.sqlite_warning');
         }
 
         $next[] = $dev === null ? __('installer.summary.next_serve') : __('installer.dev.next', [

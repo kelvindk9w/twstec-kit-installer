@@ -14,6 +14,8 @@ return [
         'no_demo' => 'Quita la demostración del kit (twstec/kit-demo)',
         'force' => 'Permite ejecutar en producción',
         'graceful' => 'No falla si la base de datos no está accesible (las migraciones quedan para después)',
+        'database' => 'Base de datos del proyecto creado: pgsql (PostgreSQL, el predeterminado) o sqlite (modo prototipo); sin la opción, vale la variable TWS_KIT_DATABASE. Solo en la creación',
+        'redis' => 'Sesión, caché y cola en Redis, con Horizon (el predeterminado); --no-redis pone todo en la base de datos, sin Redis ni Horizon. Sin la opción, vale la variable TWS_KIT_REDIS. Solo en la creación',
     ],
 
     'intro' => 'Instalador del TWS Laravel Starter Kit. foundation (seguridad, auditoría, idioma, correo) y auth (login, registro, verificación) vienen siempre; los módulos de abajo son opcionales.',
@@ -112,6 +114,25 @@ return [
         'manifest_step' => 'Base de la verificación',
         'manifest' => ':file (los archivos del starter como llegaron; php artisan tws:upgrade --check después de actualizar el kit)',
         'next' => 'Suba el proyecto: docker compose up -d — después abra :url (correos en :mail).',
+    ],
+
+    'stack' => [
+        'database_label' => 'Base de datos del proyecto',
+        'database_hint' => 'SQLite no necesita el servicio de base de datos en Docker, pero no tiene las protecciones por privilegio de PostgreSQL. La producción usa PostgreSQL.',
+        'database_pgsql' => 'PostgreSQL (recomendado)',
+        'database_sqlite' => 'SQLite (modo prototipo)',
+        'redis_label' => '¿Usar Redis (sesión, caché y cola) con Horizon?',
+        'redis_hint' => 'Sin Redis, sesión, caché y cola quedan en la base de datos, y el worker queue:work procesa la cola.',
+        'database_invalid' => 'Base de datos desconocida: :value (aceptadas: :databases).',
+        'redis_invalid' => 'Valor inválido para TWS_KIT_REDIS: :value (use 1 o 0).',
+        'only_on_create' => 'La base de datos y Redis solo se eligen al crear el proyecto: la elección fue ignorada. Para cambiar en un proyecto existente, vea la guía de instalación del kit, "Banco de dados" y "Sem Redis".',
+        'database_step' => 'Base de datos',
+        'database_pgsql_done' => 'PostgreSQL',
+        'database_sqlite_done' => 'SQLite (database/database.sqlite) — modo prototipo',
+        'redis_step' => 'Sesión, caché y cola',
+        'redis_done' => 'Redis, con Horizon',
+        'no_redis_done' => 'en la base de datos (sin Redis ni Horizon; la cola corre en queue:work)',
+        'sqlite_warning' => 'SQLite es el modo prototipo: las protecciones por privilegio de PostgreSQL (roles separados y tablas de solo inserción garantizadas por la base de datos) no existen en él. La producción con docker-compose.prod.yml usa PostgreSQL.',
     ],
 
     'extensions' => [

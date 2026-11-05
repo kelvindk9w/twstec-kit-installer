@@ -13,6 +13,8 @@ return [
         'no_demo' => 'Removes the kit demo (twstec/kit-demo)',
         'force' => 'Allows running in production',
         'graceful' => 'Does not fail when the database is unreachable (migrations are left for later)',
+        'database' => 'Database of the created project: pgsql (PostgreSQL, the default) or sqlite (prototype mode); without the option, the TWS_KIT_DATABASE variable applies. Only at creation',
+        'redis' => 'Session, cache and queue on Redis, with Horizon (the default); --no-redis puts everything in the database, without Redis or Horizon. Without the option, the TWS_KIT_REDIS variable applies. Only at creation',
     ],
 
     'intro' => 'TWS Laravel Starter Kit installer. foundation (security, audit, locale, email) and auth (login, registration, verification) always come; the modules below are optional.',
@@ -111,6 +113,25 @@ return [
         'manifest_step' => 'Check baseline',
         'manifest' => ':file (the starter files as they arrived; php artisan tws:upgrade --check after updating the kit)',
         'next' => 'Start the project: docker compose up -d — then open :url (e-mails at :mail).',
+    ],
+
+    'stack' => [
+        'database_label' => 'Project database',
+        'database_hint' => 'SQLite needs no database service in Docker, but lacks the PostgreSQL privilege safeguards. Production uses PostgreSQL.',
+        'database_pgsql' => 'PostgreSQL (recommended)',
+        'database_sqlite' => 'SQLite (prototype mode)',
+        'redis_label' => 'Use Redis (session, cache and queue) with Horizon?',
+        'redis_hint' => 'Without Redis, session, cache and queue live in the database, and the queue:work worker processes the queue.',
+        'database_invalid' => 'Unknown database: :value (accepted: :databases).',
+        'redis_invalid' => 'Invalid value for TWS_KIT_REDIS: :value (use 1 or 0).',
+        'only_on_create' => 'The database and Redis are only chosen when the project is created: the choice was ignored. To switch in an existing project, see the kit installation guide, "Banco de dados" and "Sem Redis".',
+        'database_step' => 'Database',
+        'database_pgsql_done' => 'PostgreSQL',
+        'database_sqlite_done' => 'SQLite (database/database.sqlite) — prototype mode',
+        'redis_step' => 'Session, cache and queue',
+        'redis_done' => 'Redis, with Horizon',
+        'no_redis_done' => 'in the database (no Redis or Horizon; the queue runs on queue:work)',
+        'sqlite_warning' => 'SQLite is prototype mode: the PostgreSQL privilege safeguards (separate roles and append-only tables enforced by the database) do not exist in it. Production through docker-compose.prod.yml uses PostgreSQL.',
     ],
 
     'extensions' => [

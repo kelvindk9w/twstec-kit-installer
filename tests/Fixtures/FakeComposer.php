@@ -24,6 +24,12 @@ final class FakeComposer implements Composer
      */
     public string $failureOutput = '';
 
+    /**
+     * Chamado a cada `remove`, com os pacotes — para o teste ver o projeto
+     * no momento em que o Composer roda.
+     */
+    public ?Closure $onRemove = null;
+
     public function __construct(public bool $fails = false) {}
 
     public function require(array $packages, bool $dev, Closure $output): bool
@@ -41,6 +47,10 @@ final class FakeComposer implements Composer
     public function remove(array $packages, bool $dev, Closure $output): bool
     {
         $this->calls[] = ['remove', $packages, $dev];
+
+        if ($this->onRemove !== null) {
+            ($this->onRemove)($packages);
+        }
         $output('out', 'composer remove '.implode(' ', $packages)."\n");
 
         return ! $this->fails;

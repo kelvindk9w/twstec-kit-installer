@@ -14,6 +14,8 @@ return [
         'no_demo' => 'Remove a demonstração do kit (twstec/kit-demo)',
         'force' => 'Permite rodar em produção',
         'graceful' => 'Não falha se o banco não estiver acessível (as migrations ficam para depois)',
+        'database' => 'Banco do projeto criado: pgsql (PostgreSQL, o padrão) ou sqlite (modo protótipo); sem a opção, vale a variável TWS_KIT_DATABASE. Só na criação',
+        'redis' => 'Sessão, cache e fila no Redis, com o Horizon (o padrão); --no-redis põe tudo no banco, sem Redis nem Horizon. Sem a opção, vale a variável TWS_KIT_REDIS. Só na criação',
     ],
 
     'intro' => 'Instalador do TWS Laravel Starter Kit. foundation (segurança, auditoria, idioma, e-mail) e auth (login, cadastro, verificação) vêm sempre; os módulos abaixo são opcionais.',
@@ -112,6 +114,25 @@ return [
         'manifest_step' => 'Base da conferência',
         'manifest' => ':file (os arquivos de starter como chegaram; php artisan tws:upgrade --check depois de atualizar o kit)',
         'next' => 'Suba o projeto: docker compose up -d — depois abra :url (e-mails em :mail).',
+    ],
+
+    'stack' => [
+        'database_label' => 'Banco de dados do projeto',
+        'database_hint' => 'O SQLite dispensa o serviço de banco no Docker, mas não tem as travas por privilégio do PostgreSQL. A produção usa PostgreSQL.',
+        'database_pgsql' => 'PostgreSQL (recomendado)',
+        'database_sqlite' => 'SQLite (modo protótipo)',
+        'redis_label' => 'Usar Redis (sessão, cache e fila) com o Horizon?',
+        'redis_hint' => 'Sem Redis, sessão, cache e fila ficam no banco, e o worker queue:work processa a fila.',
+        'database_invalid' => 'Banco desconhecido: :value (aceitos: :databases).',
+        'redis_invalid' => 'Valor inválido para TWS_KIT_REDIS: :value (use 1 ou 0).',
+        'only_on_create' => 'O banco e o Redis só são escolhidos na criação do projeto: a escolha foi ignorada. Para trocar num projeto que já existe, ver o guia de instalação do kit, "Banco de dados" e "Sem Redis".',
+        'database_step' => 'Banco de dados',
+        'database_pgsql_done' => 'PostgreSQL',
+        'database_sqlite_done' => 'SQLite (database/database.sqlite) — modo protótipo',
+        'redis_step' => 'Sessão, cache e fila',
+        'redis_done' => 'Redis, com o Horizon',
+        'no_redis_done' => 'no banco (sem Redis nem Horizon; a fila roda no queue:work)',
+        'sqlite_warning' => 'SQLite é o modo protótipo: as travas por privilégio do PostgreSQL (papéis separados e tabelas só-acréscimo garantidas pelo banco) não existem nele. A produção pelo docker-compose.prod.yml usa PostgreSQL.',
     ],
 
     'extensions' => [
