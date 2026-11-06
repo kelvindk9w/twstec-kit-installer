@@ -29,7 +29,10 @@ use RuntimeException;
  * - o CI base (`docker/dev/ci.yml`) vai para `.github/workflows/ci.yml`, e
  *   o Dependabot modelo (`docker/dev/dependabot.yml`), para
  *   `.github/dependabot.yml` — no monorepo, os dois ficam em `docker/dev/`:
- *   um `.github/` no starter valeria no repositório espelho dele.
+ *   um `.github/` no starter valeria no repositório espelho dele;
+ * - `README.md`: o do starter (que descreve o monorepo e o espelho publicado)
+ *   dá lugar ao do projeto, montado do modelo `stubs/project-readme.md` com o
+ *   nome, os endereços, a interface, o banco, o Redis e a versão do kit.
  *
  * Cada passo só age quando o arquivo existe, e nunca sobrescreve o que o
  * projeto já tem (NOTICE, workflow, Dependabot).
@@ -62,6 +65,23 @@ final class CreatedProject
     public const DEPENDABOT_CONFIG = '.github/dependabot.yml';
 
     public const DEV_CONTAINER = '.devcontainer/devcontainer.json';
+
+    public const README = 'README.md';
+
+    /**
+     * O modelo do README do projeto criado.
+     */
+    public const README_TEMPLATE = __DIR__.'/../../stubs/project-readme.md';
+
+    /**
+     * O repositório do kit: a documentação linkada no README do projeto.
+     */
+    public const KIT_REPOSITORY = 'https://github.com/kelvindk9w/tws-laravel-starter-kit';
+
+    /**
+     * A branch da documentação quando a versão do kit não é conhecida.
+     */
+    public const KIT_DOCS_BRANCH = 'desenvolvimento';
 
     /**
      * A versão com que o PRODUTO começa (PLATFORM_VERSION) — não a do kit.
@@ -211,6 +231,57 @@ final class CreatedProject
         unlink($license);
 
         return true;
+    }
+
+    /**
+     * O README do projeto no lugar do README do starter (só na criação: o
+     * que está lá é o do starter publicado).
+     *
+     * @param  array<string, string>  $values  {{chave}} => valor
+     * @param  array<string, bool>  $flags  {{#chave}}…{{/chave}} só quando verdadeira
+     */
+    public function readme(array $values, array $flags): bool
+    {
+        if (! is_file(self::README_TEMPLATE)) {
+            return false;
+        }
+
+        $this->write($this->root.'/'.self::README, self::renderTemplate((string) file_get_contents(self::README_TEMPLATE), $values, $flags));
+
+        return true;
+    }
+
+    /**
+     * A documentação do kit na versão instalada (a tag), ou na branch
+     * principal quando a versão não é conhecida.
+     */
+    public static function kitDocsUrl(?string $version): string
+    {
+        return self::KIT_REPOSITORY.'/tree/'.($version === null ? self::KIT_DOCS_BRANCH : 'v'.$version).'/docs';
+    }
+
+    /**
+     * O modelo com os valores: `{{#chave}}…{{/chave}}` fica só com a chave
+     * verdadeira — em linhas próprias, as linhas das marcas somem junto; no
+     * meio do texto, só o trecho — e `{{chave}}` vira o valor.
+     *
+     * @param  array<string, string>  $values
+     * @param  array<string, bool>  $flags
+     */
+    public static function renderTemplate(string $template, array $values, array $flags): string
+    {
+        $section = static fn (array $match): string => ($flags[$match[1]] ?? false) ? $match[2] : '';
+
+        $rendered = (string) preg_replace_callback('/^\{\{#([a-z_]+)\}\}\n(.*?)^\{\{\/\1\}\}\n/ms', $section, $template);
+        $rendered = (string) preg_replace_callback('/\{\{#([a-z_]+)\}\}(.*?)\{\{\/\1\}\}/s', $section, $rendered);
+
+        $placeholders = [];
+
+        foreach ($values as $key => $value) {
+            $placeholders['{{'.$key.'}}'] = $value;
+        }
+
+        return strtr($rendered, $placeholders);
     }
 
     /**

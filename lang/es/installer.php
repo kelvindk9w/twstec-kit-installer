@@ -107,6 +107,8 @@ return [
         'notice_header' => "Este proyecto se creó a partir del TWS Laravel Starter Kit, distribuido bajo la\nlicencia MIT de abajo. La MIT exige mantener este aviso junto con las partes\ndel kit que el proyecto usa. NO es la licencia del proyecto: la del proyecto\nestá en composer.json (\"license\": \":license\") — cámbiela allí y agregue un\nLICENSE propio, si corresponde.\n\n----------------------------------------------------------------------------",
         'tests_step' => 'Base de datos de prueba (PostgreSQL)',
         'tests' => ':database (phpunit.pgsql.xml y el servicio db-init de compose.yaml)',
+        'readme_step' => 'README',
+        'readme' => ':file del proyecto (en lugar del README del starter)',
         'ci_step' => 'CI',
         'ci' => ':workflow (manual y semanal; ver el README) y scripts/verificar',
         'dependabot_step' => 'Dependabot',

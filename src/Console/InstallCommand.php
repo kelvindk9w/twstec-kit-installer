@@ -84,7 +84,9 @@ use function Laravel\Prompts\select;
  * composer.json (nome `<vendor>/<nome>` — TWS_KIT_VENDOR, padrão `app` —,
  * licença — TWS_KIT_LICENSE, padrão `proprietary` —, sem a identidade do
  * starter), a licença MIT do kit em NOTICE-KIT-MIT.txt, o CI base em
- * .github/workflows/ci.yml e o Dependabot modelo em .github/dependabot.yml.
+ * .github/workflows/ci.yml, o Dependabot modelo em .github/dependabot.yml e o
+ * README.md do projeto (nome, endereços, comandos, a documentação do kit) no
+ * lugar do README do starter, que descreve o monorepo.
  * Vendor ou licença inválidos param ANTES de qualquer mudança, como o nome e
  * o número.
  *
@@ -195,8 +197,9 @@ final class InstallCommand extends Command
         // como chegaram, ANTES de o instalador adaptá-los ao projeto — só na
         // criação (o Docker de desenvolvimento configurado agora) e se ainda
         // não houver manifesto.
+        $starter = $this->starterName();
         $starterFiles = is_array($dev) && Manifest::read($this->projectPath('')) === null
-            ? ['starter' => $this->starterName(), 'files' => Manifest::snapshot($this->projectPath(''))]
+            ? ['starter' => $starter, 'files' => Manifest::snapshot($this->projectPath(''))]
             : null;
 
         $plan = $this->choose($inventory->optionalModules(), $inventory->demoInstalled());
@@ -226,6 +229,7 @@ final class InstallCommand extends Command
         if (is_array($dev)) {
             $this->writeDevEnvironment($dev);
             $this->applyStack($stack);
+            $this->projectReadme($dev, $stack, $starter === 'react', in_array('admin', $plan->target, true));
 
             if ($starterFiles !== null) {
                 $this->recordManifest($starterFiles);
@@ -852,6 +856,42 @@ final class InstallCommand extends Command
 
         if ($project->dependabot()) {
             $this->report[__('installer.dev.dependabot_step')] = __('installer.dev.dependabot', ['file' => CreatedProject::DEPENDABOT_CONFIG]);
+        }
+    }
+
+    /**
+     * O README do projeto no lugar do do starter (ver Support\CreatedProject):
+     * com o nome, os endereços, a interface, o banco e o Redis escolhidos, o
+     * /admin quando instalado e a documentação da versão do kit. A interface
+     * vem do composer.json como chegou (lido antes de o instalador trocá-lo).
+     *
+     * @param  array<string, string>  $dev  o Docker de desenvolvimento gravado no .env
+     */
+    private function projectReadme(array $dev, ProjectStack $stack, bool $react, bool $admin): void
+    {
+        $project = new CreatedProject(dirname($this->laravel->environmentFilePath()));
+        $version = $this->laravel->make(StarterReference::class)->version();
+
+        $written = $project->readme([
+            'name' => $dev['COMPOSE_PROJECT_NAME'],
+            'url' => $dev['APP_URL'],
+            'mail' => DevEnvironment::url($dev['COMPOSE_PROJECT_NAME'], (int) $dev['DEV_MAIL_PORT']),
+            'interface' => $react ? 'React (Inertia + TypeScript)' : 'Livewire',
+            'kit_version' => (string) $version,
+            'repository' => CreatedProject::KIT_REPOSITORY,
+            'docs' => CreatedProject::kitDocsUrl($version),
+        ], [
+            'react' => $react,
+            'livewire' => ! $react,
+            'pgsql' => ! $stack->sqlite(),
+            'sqlite' => $stack->sqlite(),
+            'redis' => $stack->redis,
+            'admin' => $admin,
+            'kit_version' => $version !== null,
+        ]);
+
+        if ($written) {
+            $this->report[__('installer.dev.readme_step')] = __('installer.dev.readme', ['file' => CreatedProject::README]);
         }
     }
 

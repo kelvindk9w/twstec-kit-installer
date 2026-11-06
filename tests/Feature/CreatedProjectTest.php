@@ -49,7 +49,7 @@ beforeEach(function (): void {
         'PLATFORM_REPO_URL=https://github.com/kelvindk9w/tws-laravel-starter-kit',
         'PLATFORM_COMPANY_NAME=TWS',
         'PLATFORM_COMPANY_URL=https://example.com',
-        'PLATFORM_VERSION=2.0.0-beta.22',
+        'PLATFORM_VERSION=2.0.0-beta.23',
         'PLATFORM_OFFICIAL_URL=http://127.0.0.1:8181',
         '# COMPOSE_PROJECT_NAME=',
         'DB_DATABASE=tws_starter_react',
@@ -79,6 +79,16 @@ beforeEach(function (): void {
     ]));
 
     file_put_contents($this->project.'/LICENSE', "MIT License\n\nCopyright (c) 2026 TWS\n");
+    // O README do starter publicado: descreve o monorepo e o espelho.
+    file_put_contents($this->project.'/README.md', implode("\n", [
+        '# Starter React',
+        '> Parte do TWS Laravel Starter Kit. O código fica no monorepo (pasta `starters/react`);',
+        '> este repositório é o espelho só-leitura publicado a cada versão.',
+        'scripts/preparar-dev',
+        'docker compose exec react-app php artisan migrate',
+        'Aplicação: http://127.0.0.1:8181 · Mailpit: http://localhost:18025',
+        '',
+    ]));
     mkdir($this->project.'/docker/dev', 0777, true);
     file_put_contents($this->project.'/docker/dev/ci.yml', "name: CI\n");
     file_put_contents($this->project.'/docker/dev/dependabot.yml', "version: 2\n");
@@ -184,6 +194,69 @@ it('a licença MIT do kit vira NOTICE-KIT-MIT.txt, com o aviso de que ela não �
         ->and($notice)->toEndWith("MIT License\n\nCopyright (c) 2026 TWS\n")
         ->and($notice)->toContain('TWS Laravel Starter Kit')
         ->and($notice)->toContain('"license": "proprietary"');
+});
+
+it('o README do projeto substitui o do starter: nome, endereços, comandos do projeto e a documentação da versão do kit — nada do monorepo', function (): void {
+    putenv('TWS_KIT_NAME=loja-da-maria');
+    putenv('TWS_KIT_SLOT=3');
+
+    $this->artisan('tws:install', ['--no-interaction' => true])
+        ->expectsOutputToContain('README.md')
+        ->assertSuccessful();
+
+    $readme = ($this->read)('README.md');
+    $docs = 'https://github.com/kelvindk9w/tws-laravel-starter-kit/tree/v2.0.0-beta.20/docs';
+
+    expect($readme)->toStartWith("# loja-da-maria\n")
+        ->toContain('<http://loja-da-maria.localhost:8083>', '<http://loja-da-maria.localhost:8023>')
+        ->toContain('docker compose up -d', 'scripts/verificar', 'scripts/e2e')
+        ->toContain('docker compose exec app php artisan user:make-admin', '<http://loja-da-maria.localhost:8083/admin>')
+        ->toContain('php artisan kit:overrides', 'php artisan tws:upgrade --check')
+        ->toContain('Starter Kit](https://github.com/kelvindk9w/tws-laravel-starter-kit)', '2.0.0-beta.20,', 'React (Inertia + TypeScript)')
+        ->toContain("]({$docs}/instalacao.md)", "]({$docs}/personalizacao.md)", "]({$docs})")
+        ->toContain('o PostgreSQL, o Redis, o', 'COMPOSE_PROFILES=db-port', 'resources/js/')
+        // Nada do README do starter nem do monorepo, e nenhuma marca do modelo sobrando.
+        ->not->toContain('monorepo')
+        ->not->toContain('espelho')
+        ->not->toContain('starters/')
+        ->not->toContain('preparar-dev')
+        ->not->toContain('react-app')
+        ->not->toContain('8181')
+        ->not->toContain('18025')
+        ->not->toContain('Modo protótipo')
+        ->not->toContain('resources/views/')
+        ->not->toContain('{{')
+        ->not->toContain('}}')
+        ->not->toContain("\n\n\n");
+});
+
+it('o README do projeto acompanha a interface, o banco, o Redis e os módulos escolhidos', function (): void {
+    putenv('TWS_KIT_NAME=prototipo');
+    file_put_contents($this->project.'/composer.json', (string) json_encode(['name' => 'twstec/starter-livewire', 'require' => ['twstec/kit-foundation' => '^2.0@beta']]));
+    $this->references->installed = null;
+
+    $this->artisan('tws:install', ['--no-interaction' => true, '--database' => 'sqlite', '--no-redis' => true, '--without' => 'admin'])
+        ->assertSuccessful();
+
+    expect(($this->read)('README.md'))->toStartWith("# prototipo\n")
+        ->toContain('Starter Kit](https://github.com/kelvindk9w/tws-laravel-starter-kit), com a interface em Livewire.')
+        ->toContain('Modo protótipo', 'resources/views/')
+        ->toContain('https://github.com/kelvindk9w/tws-laravel-starter-kit/tree/desenvolvimento/docs/personalizacao.md')
+        ->toContain("Sobem o site (nginx + PHP-FPM), o\nMailpit")
+        ->not->toContain('PostgreSQL, ')
+        ->not->toContain('o Redis')
+        ->not->toContain('db-port')
+        ->not->toContain('user:make-admin')
+        ->not->toContain('resources/js/')
+        ->not->toContain('{{')
+        ->not->toContain("\n\n\n");
+});
+
+it('o modelo: trecho condicional em linhas próprias some com as linhas; no meio do texto, só o trecho', function (): void {
+    $template = "a{{#x}} [x]{{/x}}{{#y}} [y]{{/y}} {{v}}\n{{#x}}\nlinha x\n{{/x}}\n{{#y}}\nlinha y\n{{/y}}\nfim\n";
+
+    expect(CreatedProject::renderTemplate($template, ['v' => 'valor'], ['x' => true, 'y' => false]))
+        ->toBe("a [x] valor\nlinha x\nfim\n");
 });
 
 it('o CI base vai para .github/workflows/ci.yml — sem sobrescrever um que o projeto já tenha', function (bool $existing): void {
@@ -305,6 +378,7 @@ it('no monorepo (sem o compose.yaml de desenvolvimento), nada do projeto criado 
         ->and(file_exists($this->project.'/docker/dev/ci.yml'))->toBeTrue()
         ->and(file_exists($this->project.'/docker/dev/dependabot.yml'))->toBeTrue()
         ->and(file_exists($this->project.'/.github/dependabot.yml'))->toBeFalse()
+        ->and(($this->read)('README.md'))->toStartWith('# Starter React')
         ->and(file_exists($this->project.'/'.Manifest::PATH))->toBeFalse();
 });
 
