@@ -38,7 +38,7 @@ Vem com os starters (o `post-create-project-cmd` o chama — e o comando único,
 aplicativo que usa os pacotes do kit sem starter:
 
 ```bash
-composer require --dev "twstec/kit-installer:~2.0@beta"   # durante o beta; na 2.0.0 estável, ~2.0
+composer require --dev "twstec/kit-installer:~2.0"
 ```
 
 ## Por que um pacote à parte
@@ -72,7 +72,7 @@ php artisan tws:install --no-interaction --with=accounts,uploads --without=admin
 como `--database` e `--redis`/`--no-redis`. É por
 onde a escolha chega ao `post-create-project-cmd` do starter, porque o
 Composer não repassa opções ao script:
-`TWS_KIT_WITHOUT=admin composer create-project "twstec/starter-livewire:~2.0@beta" app`.
+`TWS_KIT_WITHOUT=admin composer create-project "twstec/starter-livewire:~2.0" app`.
 O comando único (`twstec/kit`) usa o mesmo caminho para passar o que o menu
 dele perguntou, sem perguntar de novo.
 
@@ -126,10 +126,7 @@ Tudo em [docs/instalacao.md](https://github.com/kelvindk9w/tws-laravel-starter-k
 ## Acrescentar pacotes a um aplicativo que já existe (`tws:add`)
 
 ```bash
-# Durante o beta, o foundation também leva o @beta (a estabilidade só vale no
-# projeto raiz); na 2.0.0 estável, basta a segunda linha, sem o @beta.
-composer require "twstec/kit-foundation:~2.0@beta"
-composer require --dev "twstec/kit-installer:~2.0@beta"
+composer require --dev "twstec/kit-installer:~2.0"
 php artisan tws:add                                        # pergunta (Laravel Prompts)
 php artisan tws:add accounts admin                         # sem perguntas
 ```

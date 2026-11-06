@@ -9,11 +9,12 @@ namespace Twstec\Kit\Installer\Support;
  * composer.json dele: a do foundation em `require`; senão, a de qualquer
  * pacote do kit em `require` e depois em `require-dev` (um aplicativo
  * Laravel que só instalou o instalador — `composer require --dev
- * "twstec/kit-installer:^2.0@beta"` — tem o foundation só como dependência
+ * "twstec/kit-installer:~2.0"` — tem o foundation só como dependência
  * dele). Sem nenhum: `^2.0`.
  *
- * Exemplos: `2.x-dev` no monorepo; `^2.0@beta` num projeto criado durante o
- * beta (a estabilidade vai junto, porque só vale no projeto raiz).
+ * Exemplos: `2.x-dev` no monorepo; `^2.0` num projeto criado de uma versão
+ * estável; `^2.0@beta` num criado durante o beta (a estabilidade vai junto,
+ * porque só vale no projeto raiz).
  */
 final class KitConstraint
 {

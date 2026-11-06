@@ -106,7 +106,7 @@ it('--with acrescenta o módulo que falta, com a mesma restrição de versão do
 
     $this->artisan('tws:install', ['--with' => 'uploads,admin'])->assertSuccessful();
 
-    expect($this->composer->calls)->toBe([['require', ['twstec/kit-uploads:^2.0@beta', 'twstec/kit-admin:^2.0@beta'], false]]);
+    expect($this->composer->calls)->toBe([['require', ['twstec/kit-uploads:^2.0', 'twstec/kit-admin:^2.0'], false]]);
 });
 
 it('--with e --without juntos: acrescenta um e tira outro', function (): void {
@@ -116,14 +116,14 @@ it('--with e --without juntos: acrescenta um e tira outro', function (): void {
 
     expect($this->composer->calls)->toBe([
         ['remove', ['twstec/kit-uploads'], false],
-        ['require', ['twstec/kit-admin:^2.0@beta'], false],
+        ['require', ['twstec/kit-admin:^2.0'], false],
     ]);
 });
 
 it('webhooks: --with acrescenta (exige contas); tirar contas com webhooks é recusado; tudo de fora tira os quatro', function (): void {
     $this->artisan('tws:install', ['--with' => 'webhooks'])->assertSuccessful();
 
-    expect($this->composer->calls)->toBe([['require', ['twstec/kit-webhooks:^2.0@beta'], false]]);
+    expect($this->composer->calls)->toBe([['require', ['twstec/kit-webhooks:^2.0'], false]]);
 
     $this->composer->calls = [];
     $this->project(['accounts', 'webhooks']);

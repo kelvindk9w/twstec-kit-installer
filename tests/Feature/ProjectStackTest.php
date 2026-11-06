@@ -308,7 +308,7 @@ it('na criação, TWS_KIT_DATABASE=sqlite e TWS_KIT_REDIS=0: os arquivos adaptad
     Process::fake();
     file_put_contents($this->project.'/compose.yaml', "services:\n    app:\n        image: php\n    redis:\n        image: redis\n    postgres:\n        image: postgres\n");
     file_put_contents($this->project.'/.env.example', "APP_KEY=\nDB_CONNECTION=pgsql\nDB_HOST=postgres\nDB_DATABASE=tws\nSESSION_DRIVER=redis\nCACHE_STORE=redis\nQUEUE_CONNECTION=redis\nREDIS_HOST=redis\nREDIS_PASSWORD=null\n");
-    $this->composerJson(['name' => 'twstec/starter-livewire', 'require' => ['twstec/kit-foundation' => '^2.0@beta', StackFiles::HORIZON_PACKAGE => '^5.48']]);
+    $this->composerJson(['name' => 'twstec/starter-livewire', 'require' => ['twstec/kit-foundation' => '^2.0', StackFiles::HORIZON_PACKAGE => '^5.48']]);
     putenv('TWS_KIT_NAME=loja');
     putenv('TWS_KIT_DATABASE=sqlite');
     putenv('TWS_KIT_REDIS=0');
@@ -331,7 +331,7 @@ it('na criação, TWS_KIT_DATABASE=sqlite e TWS_KIT_REDIS=0: os arquivos adaptad
 it('sem Redis, o código do Horizon sai ANTES do composer remove (o package:discover sobe a aplicação)', function (): void {
     Process::fake();
     file_put_contents($this->project.'/compose.yaml', "services:\n    app:\n        image: php\n");
-    $this->composerJson(['name' => 'twstec/starter-livewire', 'require' => ['twstec/kit-foundation' => '^2.0@beta', StackFiles::HORIZON_PACKAGE => '^5.48']]);
+    $this->composerJson(['name' => 'twstec/starter-livewire', 'require' => ['twstec/kit-foundation' => '^2.0', StackFiles::HORIZON_PACKAGE => '^5.48']]);
     @mkdir($this->project.'/app/Providers', 0755, true);
     @mkdir($this->project.'/bootstrap', 0755, true);
     file_put_contents($this->project.'/app/Providers/HorizonServiceProvider.php', "<?php\n");
@@ -368,7 +368,7 @@ it('na criação, pelas opções --database=sqlite e --no-redis (e sinônimos do
 it('sem escolha, a criação fica com o PostgreSQL e o Redis (nada do Horizon é removido)', function (): void {
     Process::fake();
     file_put_contents($this->project.'/compose.yaml', "services:\n    app:\n        image: php\n");
-    $this->composerJson(['name' => 'twstec/starter-livewire', 'require' => ['twstec/kit-foundation' => '^2.0@beta', StackFiles::HORIZON_PACKAGE => '^5.48']]);
+    $this->composerJson(['name' => 'twstec/starter-livewire', 'require' => ['twstec/kit-foundation' => '^2.0', StackFiles::HORIZON_PACKAGE => '^5.48']]);
     putenv('TWS_KIT_NAME=loja');
 
     $this->artisan('tws:install', ['--no-interaction' => true])

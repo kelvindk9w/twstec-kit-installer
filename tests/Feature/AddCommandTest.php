@@ -26,7 +26,7 @@ beforeEach(function (): void {
     $this->composerJson([
         'name' => 'laravel/laravel',
         'require' => ['php' => '^8.4', 'laravel/framework' => '^13.0'],
-        'require-dev' => ['twstec/kit-installer' => '^2.0@beta'],
+        'require-dev' => ['twstec/kit-installer' => '^2.0'],
     ]);
     $this->project([], required: ['foundation']);
     file_put_contents($this->project.'/.env', "APP_KEY=base64:QUJDREVGR0hJSktMTU5PUFFSU1RVVldYWVowMTIzNDU=\n");
@@ -39,7 +39,7 @@ it('mostra o que está instalado e o que falta, e acrescenta contas — com a au
         ->assertSuccessful();
 
     expect($this->composer->calls)->toBe([
-        ['require', ['twstec/kit-foundation:^2.0@beta', 'twstec/kit-auth:^2.0@beta', 'twstec/kit-accounts:^2.0@beta'], false],
+        ['require', ['twstec/kit-foundation:^2.0', 'twstec/kit-auth:^2.0', 'twstec/kit-accounts:^2.0'], false],
     ])
         ->and($this->runs->getArrayCopy())->toBe([
             // Sem vendor:publish: a configuração padrão fica no pacote, sem
@@ -78,7 +78,7 @@ it('webhooks num aplicativo que já tem contas: vale, com as migrations e sem c�
 
     // O foundation e a autenticação entram como requisito DIRETO (hoje só
     // vêm por dependência), como em todo tws:add deste aplicativo.
-    expect($this->composer->calls)->toBe([['require', ['twstec/kit-foundation:^2.0@beta', 'twstec/kit-auth:^2.0@beta', 'twstec/kit-webhooks:^2.0@beta'], false]])
+    expect($this->composer->calls)->toBe([['require', ['twstec/kit-foundation:^2.0', 'twstec/kit-auth:^2.0', 'twstec/kit-webhooks:^2.0'], false]])
         ->and($this->runs->getArrayCopy())->toBe([
             'optimize:clear',
             'migrate --force',
@@ -89,20 +89,29 @@ it('contas e uploads juntos valem', function (): void {
     $this->artisan('tws:add', ['modules' => ['uploads', 'accounts']])->assertSuccessful();
 
     expect($this->composer->calls[0][1])->toBe([
-        'twstec/kit-foundation:^2.0@beta',
-        'twstec/kit-auth:^2.0@beta',
-        'twstec/kit-accounts:^2.0@beta',
-        'twstec/kit-uploads:^2.0@beta',
+        'twstec/kit-foundation:^2.0',
+        'twstec/kit-auth:^2.0',
+        'twstec/kit-accounts:^2.0',
+        'twstec/kit-uploads:^2.0',
     ]);
+});
+
+it('projeto criado durante o beta: o módulo acrescentado leva a mesma restrição, com o @beta (a estabilidade só vale no projeto raiz)', function (): void {
+    $this->project(['accounts']);
+    $this->composerJson(['require' => ['twstec/kit-foundation' => '^2.0@beta', 'twstec/kit-auth' => '^2.0@beta', 'twstec/kit-accounts' => '^2.0@beta']]);
+
+    $this->artisan('tws:add', ['modules' => ['webhooks']])->assertSuccessful();
+
+    expect($this->composer->calls)->toBe([['require', ['twstec/kit-webhooks:^2.0@beta'], false]]);
 });
 
 it('uploads num aplicativo que já tem contas: vale — e gera a chave dos uploads confidenciais (sem mexer numa que já exista)', function (): void {
     $this->project(['accounts']);
-    $this->composerJson(['require' => ['twstec/kit-foundation' => '^2.0@beta', 'twstec/kit-auth' => '^2.0@beta', 'twstec/kit-accounts' => '^2.0@beta']]);
+    $this->composerJson(['require' => ['twstec/kit-foundation' => '^2.0', 'twstec/kit-auth' => '^2.0', 'twstec/kit-accounts' => '^2.0']]);
 
     $this->artisan('tws:add', ['modules' => ['uploads']])->expectsOutputToContain('UPLOADS_ENCRYPTION_KEY')->assertSuccessful();
 
-    expect($this->composer->calls)->toBe([['require', ['twstec/kit-uploads:^2.0@beta'], false]])
+    expect($this->composer->calls)->toBe([['require', ['twstec/kit-uploads:^2.0'], false]])
         ->and($this->envFile())->toMatch('/^UPLOADS_ENCRYPTION_KEY=base64:[A-Za-z0-9+\/]{43}=$/m');
 
     // Num .env que já tem a chave, ela fica.
@@ -115,7 +124,7 @@ it('uploads num aplicativo que já tem contas: vale — e gera a chave dos uploa
 
 it('acrescentar o /admin não gera a chave dos confidenciais', function (): void {
     $this->project([]);
-    $this->composerJson(['require' => ['twstec/kit-foundation' => '^2.0@beta', 'twstec/kit-auth' => '^2.0@beta']]);
+    $this->composerJson(['require' => ['twstec/kit-foundation' => '^2.0', 'twstec/kit-auth' => '^2.0']]);
 
     $this->artisan('tws:add', ['modules' => ['admin']])->assertSuccessful();
 
@@ -124,14 +133,14 @@ it('acrescentar o /admin não gera a chave dos confidenciais', function (): void
 
 it('acrescenta o /admin — e diz o que o aplicativo faz agora (painel, model, coluna, primeiro admin, build)', function (): void {
     $this->project([]);
-    $this->composerJson(['require' => ['twstec/kit-foundation' => '^2.0@beta', 'twstec/kit-auth' => '^2.0@beta']]);
+    $this->composerJson(['require' => ['twstec/kit-foundation' => '^2.0', 'twstec/kit-auth' => '^2.0']]);
 
     $this->artisan('tws:add', ['modules' => ['admin']])
         ->expectsOutputToContain('AdminPlugin::make(), the model with FilamentUser and the AccessesAdminPanel trait, the users.is_admin column; then php artisan user:make-admin')
         ->expectsOutputToContain('npm install && npm run build')
         ->assertSuccessful();
 
-    expect($this->composer->calls)->toBe([['require', ['twstec/kit-admin:^2.0@beta'], false]])
+    expect($this->composer->calls)->toBe([['require', ['twstec/kit-admin:^2.0'], false]])
         ->and($this->envFile())->not->toContain('API_KEYS_HASH_PEPPER');
 });
 
@@ -197,10 +206,10 @@ it('interativo: pergunta só os disponíveis, mostra o plano e pede confirmaçã
         ->assertSuccessful();
 
     expect($this->composer->calls[0][1])->toBe([
-        'twstec/kit-foundation:^2.0@beta',
-        'twstec/kit-auth:^2.0@beta',
-        'twstec/kit-accounts:^2.0@beta',
-        'twstec/kit-uploads:^2.0@beta',
+        'twstec/kit-foundation:^2.0',
+        'twstec/kit-auth:^2.0',
+        'twstec/kit-accounts:^2.0',
+        'twstec/kit-uploads:^2.0',
     ]);
 });
 
@@ -256,7 +265,7 @@ it('a autenticação e o /admin não dependem do model pronto (o kit-auth confer
     $this->artisan('tws:add', ['modules' => ['auth', 'admin']])->assertSuccessful();
 
     expect($this->composer->calls)->toBe([
-        ['require', ['twstec/kit-foundation:^2.0@beta', 'twstec/kit-auth:^2.0@beta', 'twstec/kit-admin:^2.0@beta'], false],
+        ['require', ['twstec/kit-foundation:^2.0', 'twstec/kit-auth:^2.0', 'twstec/kit-admin:^2.0'], false],
     ]);
 });
 

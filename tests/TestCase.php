@@ -61,7 +61,7 @@ abstract class TestCase extends Testbench
 
         file_put_contents($this->project.'/composer.json', json_encode([
             'name' => 'twstec/starter-livewire',
-            'require' => ['twstec/kit-foundation' => '^2.0@beta', 'twstec/kit-auth' => '^2.0@beta'],
+            'require' => ['twstec/kit-foundation' => '^2.0', 'twstec/kit-auth' => '^2.0'],
         ], JSON_PRETTY_PRINT));
 
         file_put_contents($this->project.'/.env.example', implode("\n", [

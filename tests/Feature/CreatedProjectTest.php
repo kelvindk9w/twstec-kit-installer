@@ -34,7 +34,7 @@ beforeEach(function (): void {
         'license' => 'MIT',
         'homepage' => 'https://github.com/kelvindk9w/tws-laravel-starter-kit',
         'support' => ['issues' => 'https://github.com/kelvindk9w/tws-laravel-starter-kit/issues'],
-        'require' => ['php' => '^8.4', 'twstec/kit-foundation' => '^2.0@beta'],
+        'require' => ['php' => '^8.4', 'twstec/kit-foundation' => '^2.0'],
         'minimum-stability' => 'stable',
         'prefer-stable' => true,
     ];
@@ -49,7 +49,7 @@ beforeEach(function (): void {
         'PLATFORM_REPO_URL=https://github.com/kelvindk9w/tws-laravel-starter-kit',
         'PLATFORM_COMPANY_NAME=TWS',
         'PLATFORM_COMPANY_URL=https://example.com',
-        'PLATFORM_VERSION=2.0.0-beta.23',
+        'PLATFORM_VERSION=2.0.0',
         'PLATFORM_OFFICIAL_URL=http://127.0.0.1:8181',
         '# COMPOSE_PROJECT_NAME=',
         'DB_DATABASE=tws_starter_react',
@@ -171,7 +171,7 @@ it('composer.json com a identidade do projeto (app/<nome>, proprietary) e o lock
         ->and($composer)->not->toHaveKeys(CreatedProject::STARTER_IDENTITY)
         // O resto fica como estava.
         ->and($composer['type'])->toBe('project')
-        ->and($composer['require'])->toBe(['php' => '^8.4', 'twstec/kit-foundation' => '^2.0@beta'])
+        ->and($composer['require'])->toBe(['php' => '^8.4', 'twstec/kit-foundation' => '^2.0'])
         ->and(array_slice(array_keys($composer), 0, 3))->toBe(['name', 'type', 'license']);
 
     // O Composer não acusa lock desatualizado: o content-hash é o do
@@ -232,7 +232,7 @@ it('o README do projeto substitui o do starter: nome, endereços, comandos do pr
 
 it('o README do projeto acompanha a interface, o banco, o Redis e os módulos escolhidos', function (): void {
     putenv('TWS_KIT_NAME=prototipo');
-    file_put_contents($this->project.'/composer.json', (string) json_encode(['name' => 'twstec/starter-livewire', 'require' => ['twstec/kit-foundation' => '^2.0@beta']]));
+    file_put_contents($this->project.'/composer.json', (string) json_encode(['name' => 'twstec/starter-livewire', 'require' => ['twstec/kit-foundation' => '^2.0']]));
     $this->references->installed = null;
 
     $this->artisan('tws:install', ['--no-interaction' => true, '--database' => 'sqlite', '--no-redis' => true, '--without' => 'admin'])
