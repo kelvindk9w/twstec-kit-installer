@@ -837,6 +837,7 @@ final class InstallCommand extends Command
         $project->devContainerName($values['COMPOSE_PROJECT_NAME']);
         $project->testDatabase($database);
         $project->productionDatabase($database);
+        $project->productionProject($values['COMPOSE_PROJECT_NAME']);
 
         if ($this->identity !== null) {
             $project->composerIdentity($this->identity['package'], $this->identity['license']);

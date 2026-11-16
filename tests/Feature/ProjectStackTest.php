@@ -162,8 +162,12 @@ it('SQLite: o .env aponta para o arquivo, sem nada do PostgreSQL, e o compose de
         ->and(array_keys($compose['volumes']))->not->toContain('postgres_data')
         ->and(array_keys($compose['services']['init']['depends_on']))->toBe(['redis']);
 
-    // A produção continua no PostgreSQL (o instalador avisa).
-    expect(array_keys(composeYaml($root.'/docker-compose.prod.yml')['services']))->toContain('postgres');
+    // A produção continua no PostgreSQL (o instalador avisa), com o volume
+    // externo do banco.
+    $production = composeYaml($root.'/docker-compose.prod.yml');
+
+    expect(array_keys($production['services']))->toContain('postgres')
+        ->and($production['volumes']['postgres_data']['external'] ?? null)->toBeTrue();
 })->with('starters');
 
 it('sem Redis: sessão, cache e fila no banco, nenhuma variável, serviço ou arquivo do Redis e do Horizon', function (string $starter): void {
@@ -200,6 +204,9 @@ it('sem Redis: sessão, cache e fila no banco, nenhuma variável, serviço ou ar
         ->and(array_keys($production['services']['queue']['depends_on']))->toBe(['app'])
         ->and(array_keys($production['services']['app']['depends_on']))->toBe(['postgres', 'migrate'])
         ->and(array_keys($production['volumes']))->not->toContain('redis_data')
+        // O volume do banco continua externo e com nome fixo (só o do Redis sai).
+        ->and($production['volumes']['postgres_data']['external'] ?? null)->toBeTrue()
+        ->and((string) ($production['volumes']['postgres_data']['name'] ?? ''))->toStartWith('${PROD_POSTGRES_VOLUME:-')
         ->and($production['x-app-env'])->not->toHaveKeys(['REDIS_HOST', 'REDIS_PASSWORD', 'REDIS_PORT'])
         ->and([$production['x-app-env']['CACHE_STORE'], $production['x-app-env']['SESSION_DRIVER'], $production['x-app-env']['QUEUE_CONNECTION']])->toBe(['database', 'database', 'database'])
         ->and((string) file_get_contents($root.'/docker-compose.prod.yml'))->not->toContain('PROD_REDIS_PASSWORD')

@@ -19,7 +19,9 @@ use RuntimeException;
  * - `.devcontainer/devcontainer.json`: o nome do projeto no Dev Container;
  * - `phpunit.pgsql.xml`: o banco da suíte é `<banco>_test` — o MESMO que o
  *   serviço db-init do compose.yaml cria (`${DB_DATABASE}_test`);
- * - `docker-compose.prod.yml`: o nome padrão do banco de produção;
+ * - `docker-compose.prod.yml`: o nome padrão do banco de produção, o do
+ *   projeto do Compose (`name:`) e o do volume externo do banco
+ *   (`<nome>_postgres_data`);
  * - `composer.json`: o nome do pacote (`<vendor>/<nome>`, padrão
  *   `app/<nome>`), a licença (padrão `proprietary`) e nada da identidade do
  *   starter (descrição, página, suporte, palavras-chave, versão); o `content-hash`
@@ -177,6 +179,21 @@ final class CreatedProject
     public function productionDatabase(string $database): bool
     {
         return $this->rewrite('docker-compose.prod.yml', '/\$\{PROD_POSTGRES_DB:-[^}]*\}/', '${PROD_POSTGRES_DB:-'.$database.'}');
+    }
+
+    /**
+     * O nome padrão do projeto do Compose de produção (o `name:` do
+     * docker-compose.prod.yml) e o do volume externo do banco,
+     * `<nome>_postgres_data` — o nome que o Compose dava ao volume quando o
+     * projeto rodava com esse nome. Os dois ficam fixos: subir de outra pasta
+     * não cria outra stack nem um banco vazio.
+     */
+    public function productionProject(string $name): bool
+    {
+        $project = $this->rewrite('docker-compose.prod.yml', '/\$\{PROD_COMPOSE_PROJECT_NAME:-[^}]*\}/', '${PROD_COMPOSE_PROJECT_NAME:-'.$name.'}');
+        $volume = $this->rewrite('docker-compose.prod.yml', '/\$\{PROD_POSTGRES_VOLUME:-[^}]*\}/', '${PROD_POSTGRES_VOLUME:-'.$name.'_postgres_data}');
+
+        return $project || $volume;
     }
 
     /**
